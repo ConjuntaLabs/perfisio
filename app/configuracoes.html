@@ -258,8 +258,8 @@
       try {
         const r = await PF.api('/api/dominio', { method: 'PUT', body: { dominio: valor } });
         App.toast('Domínio salvo! Agora configure o DNS.');
-        if (r.railway && !r.railway.automatico && r.railway.motivo)
-          console.warn('registro automático no Railway indisponível:', r.railway.motivo);
+        if (r.registro && !r.registro.automatico && r.registro.motivo)
+          console.info('registro automático indisponível:', r.registro.motivo);
         await carregarDominio();
       } catch (e) { App.toast(e.message, 'error'); }
       btn.disabled = false;
