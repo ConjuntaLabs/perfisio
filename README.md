@@ -5,7 +5,7 @@ Diretório de fisioterapeutas e clínicas + CRM e sistema de gestão completo �
 - **Frontend:** HTML/CSS/JS puro (sem frameworks, sem build)
 - **Backend:** Node.js + Express + PostgreSQL (`server/server.js`)
 - **Auth:** JWT (bcrypt para senhas) · multi-tenant por clínica
-- **Deploy:** Railway (app + Postgres) · produção: https://perfisio-production.up.railway.app
+- **Deploy:** Dokploy (app + Postgres) · imagem Docker pelo GitHub Actions · produção: https://www.perfisio.com.br
 
 ## Como funciona
 
@@ -45,14 +45,48 @@ DATABASE_URL=postgres://... JWT_SECRET=qualquer node server/server.js
 
 O schema é criado/verificado automaticamente no boot (`CREATE TABLE IF NOT EXISTS`).
 
-## Variáveis (Railway)
+## Deploy (Dokploy)
 
-- `DATABASE_URL` → referência `${{Postgres-2Cvg.DATABASE_URL}}`
-- `JWT_SECRET` → segredo forte (já configurado)
+O workflow `.github/workflows/deploy.yml` constrói a imagem (`Dockerfile`, Alpine + node 22) e, em push na `main`, envia
+`container-registry.br-se1.magalu.cloud/conjunta-registry/perfisio` com as tags `:latest` e `:sha-<commit>` e chama a API do Dokploy.
+Em pull request só constrói. Secrets do repositório: `MGC_REGISTRY_USERNAME`, `MGC_REGISTRY_PASSWORD`, `DOKPLOY_URL`,
+`DOKPLOY_APP_ID`, `DOKPLOY_API_KEY` (sem os `DOKPLOY_*` a imagem é enviada e o deploy é pulado).
+Rollback: no Dokploy, troque a tag da imagem para `sha-<commit>` e faça o deploy.
+
+No Dokploy: Application com Provider **Docker**, porta **3000**, sem volume (anexos ficam no Postgres como `bytea`),
+mais um serviço **PostgreSQL** cuja *Internal Connection URL* vai em `DATABASE_URL`. O schema é criado no primeiro boot
+(`CREATE TABLE IF NOT EXISTS`), então um banco vazio funciona sem passo manual.
+
+### Variáveis de ambiente
+
+| Variável | Uso |
+|---|---|
+| `DATABASE_URL` | obrigatória (URL interna do Postgres do Dokploy, sem TLS). `DATABASE_SSL=true` liga TLS para Postgres externo |
+| `JWT_SECRET` | obrigatória em produção (segredo forte; sem ela usa um segredo de desenvolvimento e avisa no log) |
+| `SUPERADMIN_EMAIL`, `SUPERADMIN_PASSWORD` | cria/sincroniza o superadmin em cada boot (`/admin`) |
+| `SITE_HOST` | `www.perfisio.com.br`: ativa a separação site / app e o redirect do apex para o www |
+| `APP_HOST` | `app.perfisio.com.br` (login e painel; alvo do CNAME dos domínios das clínicas) |
+| `SHORT_HOST` | `perfis.io` (links curtos `perfis.io/<usuario>`; padrão já é este) |
+| `APP_URL` | `https://app.perfisio.com.br` (links em e-mails e retorno da Stripe) |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | assinaturas (opcionais) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | e-mail (opcionais, ver abaixo) |
+| `GOOGLE_CLIENT_ID` | login com Google (opcional) |
+| `MAPBOX_TOKEN` | mapa (opcional) |
+| `LOJA_DESCONTO_FISIO` | % de desconto da loja para quem usa o sistema (padrão 5) |
+
+`PORT` (3000) e `NODE_ENV` já vêm na imagem. Hosts `*.traefik.me` (domínio de teste do Dokploy) contam como host do
+sistema: servem o app inteiro sem os redirects de `SITE_HOST`. Para testar, deixe `SITE_HOST` vazio.
+
+### Domínios próprios das clínicas
+
+A clínica salva o domínio em Configurações → Domínio próprio e aponta o DNS (CNAME) para `APP_HOST`. Não há integração
+com a API do Dokploy: o domínio precisa ser **adicionado à mão** em Dokploy → Application → Domains (porta 3000, HTTPS,
+Let's Encrypt). Ao salvar, o servidor registra um aviso no log e responde `registro.automatico = false`.
+O cadastro da clínica não falha por causa disso.
 
 ## E-mail (módulo Marketing)
 
-O envio real de campanhas usa SMTP via nodemailer. Configure no serviço do Railway:
+O envio real de campanhas usa SMTP via nodemailer. Configure no app do Dokploy:
 
 - `SMTP_HOST`, `SMTP_PORT` (587 ou 465), `SMTP_USER`, `SMTP_PASS`
 - `SMTP_FROM` (opcional, ex.: `"Clínica Movimente" <contato@movimente.com.br>`)

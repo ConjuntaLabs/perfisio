@@ -8,10 +8,13 @@ const jwt = require('jsonwebtoken');
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'perfisio-dev-secret';
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production')
+  console.warn('⚠️  JWT_SECRET não definido: usando o segredo de desenvolvimento. Defina JWT_SECRET.');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost')
-    ? { rejectUnauthorized: false } : false,
+  // TLS só quando pedido (DATABASE_SSL=true, ex.: Postgres gerenciado). O Postgres interno do
+  // Dokploy não fala TLS; sslmode=... na própria URL também continua valendo.
+  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
 });
 
 /* ============ MIGRATIONS ============ */
@@ -438,7 +441,7 @@ async function seedClinica(client, cid) {
 /* ============ DOMÍNIO PRÓPRIO DA CLÍNICA ============ */
 const dns = require('node:dns').promises;
 // host onde o PerFisio roda — é para cá que o CNAME da clínica deve apontar
-const HOST_APP = (process.env.APP_HOST || process.env.RAILWAY_PUBLIC_DOMAIN || 'app.perfisio.com.br').toLowerCase();
+const HOST_APP = (process.env.APP_HOST || 'app.perfisio.com.br').toLowerCase();
 // site público (marketing + diretório) e sistema (login/app) em hosts separados.
 // A separação só entra em ação com SITE_HOST definido — antes disso tudo roda no mesmo host.
 const HOST_SITE = (process.env.SITE_HOST || '').toLowerCase();
@@ -449,12 +452,12 @@ const HOSTS_SISTEMA = new Set(
   [HOST_APP, HOST_SITE, HOST_APEX, HOST_CURTO, `www.${HOST_CURTO}`,
    'localhost', '127.0.0.1', 'perfisio.com.br', 'www.perfisio.com.br'].filter(Boolean));
 const ehHostCurto = h => soHost(h) === HOST_CURTO || soHost(h) === `www.${HOST_CURTO}`;
-// para onde o CNAME das clínicas aponta — fica no host do app, que é o domínio cadastrado no Railway
+// para onde o CNAME das clínicas aponta — fica no host do app, que é o domínio cadastrado no Dokploy
 // (ligar o SITE_HOST não pode mudar a instrução de DNS de quem já configurou)
 const ALVO_CNAME = HOST_APP;
 
 const soHost = h => String(h || '').split(':')[0].toLowerCase().replace(/\.$/, '');
-const hostDoSistema = h => HOSTS_SISTEMA.has(soHost(h)) || soHost(h).endsWith('.up.railway.app');
+const hostDoSistema = h => HOSTS_SISTEMA.has(soHost(h)) || soHost(h).endsWith('.traefik.me'); // *.traefik.me: domínio de teste do Dokploy
 
 const RE_DOMINIO = /^(?!-)[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63})+$/;
 function normalizarDominio(d) {
@@ -497,32 +500,13 @@ async function dnsAponta(dominio) {
   }
 }
 
-// registra o domínio no Railway (emissão do certificado TLS) quando há token de API
-async function registrarNoRailway(dominio) {
-  const token = process.env.RAILWAY_API_TOKEN;
-  const { RAILWAY_ENVIRONMENT_ID: amb, RAILWAY_PROJECT_ID: proj, RAILWAY_SERVICE_ID: svc } = process.env;
-  if (!token || !amb || !proj || !svc) return { automatico: false, motivo: 'sem RAILWAY_API_TOKEN' };
-  try {
-    const r = await fetch('https://backboard.railway.com/graphql/v2', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        query: `mutation($input: CustomDomainCreateInput!) {
-          customDomainCreate(input: $input) { id domain status { dnsRecords { hostlabel recordType requiredValue zone } } } }`,
-        variables: { input: { domain: dominio, environmentId: amb, projectId: proj, serviceId: svc } },
-      }),
-    });
-    const j = await r.json();
-    if (j.errors?.length) {
-      const msg = j.errors[0].message || '';
-      // já cadastrado antes não é erro para o nosso fluxo
-      if (/already exists|already in use/i.test(msg)) return { automatico: true, jaExistia: true };
-      return { automatico: false, motivo: msg };
-    }
-    return { automatico: true, registros: j.data?.customDomainCreate?.status?.dnsRecords || [] };
-  } catch (e) {
-    return { automatico: false, motivo: e.message };
-  }
+// O certificado TLS do domínio da clínica é emitido pelo Traefik do Dokploy, e o domínio precisa ser
+// adicionado ali (Application → Domains: host, porta 3000, HTTPS, Let's Encrypt). Não há integração
+// por API: o aviso devolvido diz isso, e o cadastro da clínica segue normalmente.
+function registrarNoProvedor(dominio) {
+  const motivo = 'O domínio é adicionado à mão no Dokploy (Application → Domains)';
+  console.warn(`ℹ️  domínio próprio "${dominio}" salvo: adicione-o em Dokploy → Domains para emitir o certificado`);
+  return { automatico: false, motivo };
 }
 
 /* ============ PLANOS / STRIPE ============ */
@@ -2147,7 +2131,7 @@ app.delete('/api/admin/social/:id', superauth, async (req, res) => {
 app.get('/api/dominio', auth, async (req, res) => {
   const c = (await pool.query(
     'SELECT nome, dominio, dominio_status, dominio_verificado_em FROM clinicas WHERE id=$1', [req.auth.cid])).rows[0];
-  res.json({ ...c, alvo: ALVO_CNAME, automatico: !!process.env.RAILWAY_API_TOKEN });
+  res.json({ ...c, alvo: ALVO_CNAME, automatico: false });
 });
 
 app.put('/api/dominio', auth, async (req, res) => {
@@ -2157,11 +2141,11 @@ app.put('/api/dominio', auth, async (req, res) => {
   const dup = await pool.query('SELECT 1 FROM clinicas WHERE lower(dominio)=$1 AND id<>$2', [dominio, req.auth.cid]);
   if (dup.rowCount) return res.status(409).json({ erro: 'Este domínio já está em uso por outra clínica' });
 
-  const railway = await registrarNoRailway(dominio);
+  const registro = registrarNoProvedor(dominio);
   await pool.query("UPDATE clinicas SET dominio=$2, dominio_status='pendente', dominio_verificado_em=NULL WHERE id=$1",
     [req.auth.cid, dominio]);
   limparCacheHost();
-  res.json({ ok: true, dominio, alvo: ALVO_CNAME, status: 'pendente', railway });
+  res.json({ ok: true, dominio, alvo: ALVO_CNAME, status: 'pendente', registro });
 });
 
 app.delete('/api/dominio', auth, async (req, res) => {
