@@ -602,10 +602,22 @@
         return palavras;
       }
 
+      /* Em aba de fundo o navegador congela o requestAnimationFrame e a GSAP
+         para no "from" — o título ficaria invisível até alguém olhar. Então a
+         animação só começa com a aba à frente; até lá vale a reserva do CSS. */
+      const comVisibilidade = acao => {
+        if (document.visibilityState === 'visible') return acao();
+        document.addEventListener('visibilitychange', function volta() {
+          if (document.visibilityState !== 'visible') return;
+          document.removeEventListener('visibilitychange', volta);
+          acao();
+        });
+      };
+
       Promise.all([
         carregar('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js'),
         carregar('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js'),
-      ]).then(() => {
+      ]).then(() => comVisibilidade(() => {
         if (!window.gsap || !window.ScrollTrigger) return;
         gsap.registerPlugin(ScrollTrigger);
         const naHora = performance.now() < 700;   // a reserva do CSS ainda não revelou nada
@@ -633,7 +645,7 @@
 
         const midia = document.getElementById('midia');
         if (midia && naHora) gsap.fromTo(midia, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: .8, ease: 'power2.out', delay: .15 });
-      }).catch(() => { document.documentElement.classList.add('gsap-ok'); });
+      })).catch(() => { document.documentElement.classList.add('gsap-ok'); });
     })();
   </script>
 </body>
