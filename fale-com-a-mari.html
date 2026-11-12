@@ -37,17 +37,35 @@
     .selo { display: flex; align-items: center; gap: 8px; font-size: .84rem; font-weight: 600; color: var(--text-soft); }
     .selo .i { color: var(--primary); }
 
-    /* ---------- vídeo / retrato ---------- */
-    .mari-coluna { display: flex; flex-direction: column; gap: 12px; }
-    .mari-nota { font-size: .78rem; color: var(--text-soft); line-height: 1.6; text-align: center; margin: 0; }
-    .mari-nota b { color: var(--ink); font-weight: 700; }
+    /* ---------- cartão do herói ---------- */
     .mari-midia { position: relative; border-radius: 22px; overflow: hidden; background: var(--ink);
       box-shadow: var(--shadow-lg); aspect-ratio: 4 / 5; display: grid; }
-    /* vídeo do YouTube é 16:9 — sem isto a miniatura vem cortada no retrato */
-    .mari-midia.deitado { aspect-ratio: 16 / 9; }
-    .mari-midia .marca-exemplo { position: absolute; top: 12px; left: 12px; z-index: 2;
-      background: rgba(15, 42, 46, .82); color: #fff; font-size: .7rem; font-weight: 800;
-      letter-spacing: .6px; text-transform: uppercase; padding: 6px 11px; border-radius: 99px; }
+
+    /* ---------- faixa do vídeo (ponta a ponta) ---------- */
+    .faixa-video { display: grid; grid-template-columns: 1.08fr .92fr; align-items: stretch;
+      background: var(--ink); color: #fff; margin-top: 76px; }
+    /* sem isto o display:grid venceria o [hidden] e a faixa apareceria vazia */
+    .faixa-video[hidden] { display: none; }
+    .faixa-video .lado-video { position: relative; background: #000; min-height: 440px; overflow: hidden; }
+    .faixa-video .lado-video img,
+    .faixa-video .lado-video video,
+    .faixa-video .lado-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border: none; display: block; }
+    .faixa-video .marca-exemplo { position: absolute; top: 18px; left: 18px; z-index: 2;
+      background: rgba(15, 42, 46, .82); color: #fff; font-size: .68rem; font-weight: 800;
+      letter-spacing: .8px; text-transform: uppercase; padding: 6px 12px; border-radius: 99px; }
+    .faixa-video .lado-texto { padding: 60px clamp(24px, 6vw, 72px); display: flex; flex-direction: column; justify-content: center; }
+    .faixa-video .kicker-claro { font-size: .72rem; font-weight: 800; letter-spacing: 2.4px; text-transform: uppercase; color: var(--accent); }
+    .faixa-video h2 { font-size: clamp(1.5rem, 2.8vw, 2.1rem); font-weight: 900; letter-spacing: -.8px;
+      line-height: 1.18; margin-top: 14px; text-align: left; color: #fff; }
+    .faixa-video h2 em { color: var(--accent); font-style: normal; }
+    .faixa-video p { color: #9DB3B0; font-size: 1rem; line-height: 1.75; margin-top: 16px; max-width: 480px; }
+    .faixa-video p b { color: #fff; font-weight: 700; }
+    .acoes-video { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
+    .acoes-video .btn { padding: 12px 24px; }
+    .acoes-video .btn-ghost.claro { background: transparent; color: #fff; border-color: rgba(255,255,255,.3); }
+    .acoes-video .btn-ghost.claro:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.5); }
+    .nota-video { font-size: .8rem; color: #7E9794; line-height: 1.6; margin-top: 22px; }
+    .nota-video b { color: #CFE3DF; font-weight: 700; }
     .mari-midia video, .mari-midia img, .mari-midia iframe { width: 100%; height: 100%; object-fit: cover; border: none; display: block; }
     .mari-cartao { padding: 34px 30px; display: flex; flex-direction: column; justify-content: space-between;
       background: linear-gradient(155deg, var(--ink) 0%, #16413F 60%, var(--primary-dark) 140%); color: #fff; }
@@ -162,6 +180,10 @@
     @media (max-width: 980px) {
       .mari-hero { grid-template-columns: 1fr; gap: 32px; padding-top: 40px; }
       .mari-midia { max-width: 420px; }
+      .faixa-video { grid-template-columns: 1fr; margin-top: 56px; }
+      .faixa-video .lado-video { min-height: 0; aspect-ratio: 16 / 9; }
+      .faixa-video .lado-texto { padding: 36px 6vw 44px; }
+      .faixa-video p { max-width: none; }
       .cards3, .roteiro { grid-template-columns: 1fr; }
       .passo { border-right: none; border-bottom: 1px solid var(--line); }
       .passo:last-child { border-bottom: none; }
@@ -204,9 +226,23 @@
         <span class="selo"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#cartao"></use></svg> sem cartão, sem compromisso</span>
       </div>
     </div>
-    <div class="mari-coluna">
-      <div class="mari-midia" id="midia"></div>
-      <p class="mari-nota" id="notaVideo" hidden></p>
+    <div class="mari-midia" id="midia"></div>
+  </section>
+
+  <!-- vídeo da apresentação: faixa de ponta a ponta, vídeo de um lado e texto do outro -->
+  <section class="faixa-video" id="faixaVideo" hidden>
+    <div class="lado-video" id="midiaVideo"></div>
+    <div class="lado-texto">
+      <div class="kicker-claro">Em vídeo</div>
+      <h2 class="anima-t">Veja como a <em>conversa</em> funciona</h2>
+      <p>Antes de marcar, assista: é esse tom, sem roteiro de vendedor. Na chamada ao vivo a diferença é
+        que a tela fica com os <b>seus</b> números — sua agenda da semana, seus pacotes, o seu jeito de
+        registrar evolução.</p>
+      <div class="acoes-video">
+        <a class="btn btn-primary" href="#agendar">Escolher um horário</a>
+        <a class="btn btn-ghost claro" href="/site-para-fisioterapeutas">Ver o sistema por dentro</a>
+      </div>
+      <p class="nota-video" id="notaVideo"></p>
     </div>
   </section>
 
@@ -344,42 +380,13 @@
     const ICO = n => `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#${n}"></use></svg>`;
 
     /* ================= vídeo, retrato ou cartão com a fala dela ================= */
-    (function midia() {
+    /* ---------- cartão do herói ----------
+       O herói é sempre o cartão de apresentação (com a foto dela no avatar, se
+       houver). O vídeo mora na faixa logo abaixo, de ponta a ponta.
+       A frase da própria Mari entra pela env MARI_FRASE, e aí vira citação de
+       verdade (com aspas e assinatura). */
+    (function cartaoDoHeroi() {
       const box = document.getElementById('midia');
-      if (MIDIA.video) {
-        box.innerHTML = `<video controls preload="metadata" playsinline ${MIDIA.poster ? `poster="${esc(MIDIA.poster)}"` : ''}>
-            <source src="/${esc(MIDIA.video)}" type="video/${MIDIA.video.endsWith('webm') ? 'webm' : 'mp4'}">
-          </video>`;
-        return;
-      }
-      if (MIDIA.youtube) {
-        const exemplo = !!MIDIA.youtubeExemplo;
-        const titulo = exemplo ? 'Vídeo de exemplo' : `Vídeo da ${esc(MARI.nome)}`;
-        box.classList.add('deitado');
-        // só carrega o player (e os cookies do YouTube) depois do clique
-        box.innerHTML = `
-          ${exemplo ? '<span class="marca-exemplo">prévia</span>' : ''}
-          <img src="https://i.ytimg.com/vi/${esc(MIDIA.youtube)}/maxresdefault.jpg" alt="${titulo}"
-               onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/${esc(MIDIA.youtube)}/hqdefault.jpg'">
-          <button class="mari-play" type="button" aria-label="Assistir ao vídeo"><span><svg class="i" viewBox="0 -960 960 960" aria-hidden="true"><path d="M320-273v-414q0-17 12-28.5t28-11.5q5 0 10.5 1.5T381-721l326 207q9 6 13.5 15t4.5 19q0 10-4.5 19T707-446L381-239q-5 3-10.5 4.5T360-233q-16 0-28-11.5T320-273Z"/></svg></span></button>`;
-        box.querySelector('.mari-play').addEventListener('click', () => {
-          box.innerHTML = `${exemplo ? '<span class="marca-exemplo">prévia</span>' : ''}
-            <iframe src="https://www.youtube-nocookie.com/embed/${esc(MIDIA.youtube)}?autoplay=1&rel=0"
-            title="${titulo}" allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
-        });
-        const nota = document.getElementById('notaVideo');
-        if (nota) {
-          nota.innerHTML = exemplo
-            ? `<b>Vídeo de exemplo.</b> A apresentação da ${esc(MARI.nome)} entra aqui em breve — até lá,
-               é só marcar um horário que ela mostra tudo ao vivo.`
-            : `A ${esc(MARI.nome)} em 1 minuto. A conversa ao vivo é onde ela abre o sistema com o seu caso.`;
-          nota.hidden = false;
-        }
-        return;
-      }
-      /* Sem vídeo e sem foto, o lugar é da apresentação da conversa — na voz do
-         PerFisio. A frase da própria Mari entra pela env MARI_FRASE, e aí vira
-         citação de verdade (com aspas e assinatura). */
       box.classList.add('mari-cartao');
       box.innerHTML = `
         <div>
@@ -395,6 +402,44 @@
           <span class="av">${MIDIA.foto ? `<img src="/${esc(MIDIA.foto)}" alt="${esc(MARI.nome)}">` : esc(MARI.nome[0] || 'M')}</span>
           <span><b>${esc(MARI.nome)}</b><span>Fisioterapeuta · quem conduz a conversa</span></span>
         </div>`;
+    })();
+
+    /* ---------- faixa do vídeo ----------
+       Arquivo em assets/video/mari.* tem prioridade; senão vale o YouTube
+       (MARI_VIDEO_YOUTUBE ou, enquanto não houver, o vídeo de exemplo). Sem
+       nada disso a seção inteira some. */
+    (function faixaDoVideo() {
+      const secao = document.getElementById('faixaVideo');
+      const box = document.getElementById('midiaVideo');
+      const nota = document.getElementById('notaVideo');
+      const exemplo = !!MIDIA.youtubeExemplo && !MIDIA.video;
+      const selo = exemplo ? '<span class="marca-exemplo">prévia</span>' : '';
+      const titulo = exemplo ? 'Vídeo de exemplo' : `Vídeo da ${esc(MARI.nome)}`;
+
+      if (MIDIA.video) {
+        box.innerHTML = `<video controls preload="metadata" playsinline ${MIDIA.poster ? `poster="${esc(MIDIA.poster)}"` : ''}>
+            <source src="/${esc(MIDIA.video)}" type="video/${MIDIA.video.endsWith('webm') ? 'webm' : 'mp4'}">
+          </video>`;
+      } else if (MIDIA.youtube) {
+        // só carrega o player (e os cookies do YouTube) depois do clique
+        box.innerHTML = `${selo}
+          <img src="https://i.ytimg.com/vi/${esc(MIDIA.youtube)}/maxresdefault.jpg" alt="${titulo}"
+               onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/${esc(MIDIA.youtube)}/hqdefault.jpg'">
+          <button class="mari-play" type="button" aria-label="Assistir ao vídeo"><span><svg class="i" viewBox="0 -960 960 960" aria-hidden="true"><path d="M320-273v-414q0-17 12-28.5t28-11.5q5 0 10.5 1.5T381-721l326 207q9 6 13.5 15t4.5 19q0 10-4.5 19T707-446L381-239q-5 3-10.5 4.5T360-233q-16 0-28-11.5T320-273Z"/></svg></span></button>`;
+        box.querySelector('.mari-play').addEventListener('click', () => {
+          box.innerHTML = `${selo}
+            <iframe src="https://www.youtube-nocookie.com/embed/${esc(MIDIA.youtube)}?autoplay=1&rel=0"
+            title="${titulo}" allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+        });
+      } else {
+        return; // sem vídeo nenhum: a faixa nem aparece
+      }
+
+      nota.innerHTML = exemplo
+        ? `<b>Vídeo de exemplo.</b> A apresentação da ${esc(MARI.nome)} entra aqui em breve —
+           até lá, é só marcar um horário que ela mostra tudo ao vivo.`
+        : `Gravado uma vez. A conversa ao vivo é onde ela abre o sistema com o seu caso.`;
+      secao.hidden = false;
     })();
 
     if (MIDIA.foto) {
