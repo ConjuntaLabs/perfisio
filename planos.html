@@ -9,7 +9,11 @@
   <link rel="stylesheet" href="assets/css/app.css">
   <!-- tamanho dos ícones não pode depender do CSS externo: se ele demorar,
        falhar ou vier velho do cache, o <svg> cresce para 300x150 -->
-  <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}</style>
+  <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}
+    /* tamanho do logo: um só para todas as páginas, e junto do HTML para
+       não depender de uma folha antiga no cache do navegador */
+    .lp-header .logo img{height:30px;width:auto;display:block}
+    @media (max-width:760px){.lp-header .logo img{height:22px}}</style>
   <style>
     body { background: #fff; }
     .lp-header {
@@ -18,12 +22,7 @@
       backdrop-filter: blur(8px); z-index: 50;
     }
     .lp-header .logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.15rem; color: var(--ink); }
-    .lp-header .logo img { height: 30px; width: auto; display: block; }
-    /* no celular o logo ocupava quase metade da largura e espremia os botões */
-    @media (max-width: 760px) {
-      .lp-header { padding-inline: 5vw; gap: 10px; }
-      .lp-header .logo img { height: 22px; }
-    }
+        @media (max-width: 760px) { .lp-header { padding-inline: 5vw; gap: 10px; } }
     .lp-header .logo .mark { width: 34px; height: 34px; border-radius: 9px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; display: grid; place-items: center; font-size: 1rem; }
     .lp-header nav { margin-left: auto; display: flex; align-items: center; gap: 22px; font-size: .9rem; font-weight: 600; color: var(--text-soft); }
     .lp-header nav a:hover { color: var(--ink); }
@@ -307,5 +306,6 @@
 
     carregar();
   </script>
+  <script src="/assets/js/menu.js"></script>
 </body>
 </html>

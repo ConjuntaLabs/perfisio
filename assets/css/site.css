@@ -9,12 +9,10 @@ body { background: #fff; }
   background: rgba(255, 255, 255, .92); backdrop-filter: blur(8px); z-index: 50;
 }
 .lp-header .logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.15rem; color: var(--ink); }
-.lp-header .logo img { height: 30px; width: auto; display: block; }
-
-/* no celular o logo ocupava quase metade da largura e espremia os botões */
+/* o tamanho do logo vive no <style> de cada página (sempre fresco); aqui fica
+   só o espaçamento do cabeçalho no celular */
 @media (max-width: 760px) {
   .lp-header { padding-inline: 5vw; gap: 10px; }
-  .lp-header .logo img { height: 22px; }
 }
 .lp-header nav { margin-left: auto; display: flex; align-items: center; gap: 22px; font-size: .9rem; font-weight: 600; color: var(--text-soft); }
 .lp-header nav a:hover { color: var(--ink); }

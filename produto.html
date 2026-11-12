@@ -9,7 +9,11 @@
   <link rel="stylesheet" href="/assets/css/app.css">
   <!-- tamanho dos ícones não pode depender do CSS externo: se ele demorar,
        falhar ou vier velho do cache, o <svg> cresce para 300x150 -->
-  <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}</style>
+  <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}
+    /* tamanho do logo: um só para todas as páginas, e junto do HTML para
+       não depender de uma folha antiga no cache do navegador */
+    .lp-header .logo img{height:30px;width:auto;display:block}
+    @media (max-width:760px){.lp-header .logo img{height:22px}}</style>
   <link rel="stylesheet" href="/assets/css/site.css">
   <style>
     .pr-wrap { max-width: 1100px; margin: 0 auto; padding: 30px 6vw 0; }
@@ -149,5 +153,6 @@
       Loja.iniciar();
     })();
   </script>
+  <script src="/assets/js/menu.js"></script>
 </body>
 </html>

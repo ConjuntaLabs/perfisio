@@ -9,7 +9,11 @@
   <link rel="stylesheet" href="/assets/css/app.css">
   <!-- tamanho dos ícones não pode depender do CSS externo: se ele demorar,
        falhar ou vier velho do cache, o <svg> cresce para 300x150 -->
-  <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}</style>
+  <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}
+    /* tamanho do logo: um só para todas as páginas, e junto do HTML para
+       não depender de uma folha antiga no cache do navegador */
+    .lp-header .logo img{height:30px;width:auto;display:block}
+    @media (max-width:760px){.lp-header .logo img{height:22px}}</style>
   <style>
     body { background: #fff; }
     .lp-header {
@@ -17,12 +21,7 @@
       border-bottom: 1px solid var(--line); position: sticky; top: 0; background: rgba(255,255,255,.94);
       backdrop-filter: blur(8px); z-index: 50;
     }
-    .lp-header .logo img { height: 30px; width: auto; display: block; }
-    /* no celular o logo ocupava quase metade da largura e espremia os botões */
-    @media (max-width: 760px) {
-      .lp-header { padding-inline: 5vw; gap: 10px; }
-      .lp-header .logo img { height: 22px; }
-    }
+        @media (max-width: 760px) { .lp-header { padding-inline: 5vw; gap: 10px; } }
     .lp-header nav { margin-left: auto; display: flex; align-items: center; gap: 20px; font-size: .9rem; font-weight: 600; color: var(--text-soft); }
 
     .cid-hero { padding: 54px 6vw 34px; text-align: center; background: linear-gradient(180deg, #F0FAF7 0%, #fff 100%); }
@@ -200,5 +199,6 @@
 
     boot();
   </script>
+  <script src="/assets/js/menu.js"></script>
 </body>
 </html>
