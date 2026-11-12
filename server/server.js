@@ -3981,16 +3981,24 @@ app.get(/^\/[a-z0-9-]+(\/[a-z0-9-]+)?\/$/, (req, res, next) => {
    A foto e o vídeo são opcionais: a página mostra o que existir na pasta
    (assets/img/mari.jpg e assets/video/mari.mp4) ou, na falta deles, o cartão
    com a fala dela. Assim o Thiago só precisa soltar o arquivo no lugar. */
+// vídeo público usado como prévia (TED — "How to Speak So That People Want to
+// Listen"): entra só enquanto não houver vídeo da Mari, e a página diz que é exemplo
+const VIDEO_EXEMPLO = 'eIho2S0ZahI';
 const midiaCache = { quando: 0, valor: null };
 function midiaDaMari() {
   if (Date.now() - midiaCache.quando < 30000 && midiaCache.valor) return midiaCache.valor;
   const existe = arq => { try { return require('node:fs').existsSync(path.join(ROOT, arq)); } catch (e) { return false; } };
   const achar = (base, extensoes) => extensoes.map(e => `${base}.${e}`).find(existe) || null;
+  // enquanto a apresentação da Mari não é gravada, a página mostra um vídeo
+  // público de alguém apresentando, marcado como exemplo. Para trocar: solte o
+  // arquivo em assets/video/mari.mp4 ou defina MARI_VIDEO_YOUTUBE.
+  const youtube = process.env.MARI_VIDEO_YOUTUBE || null;
   midiaCache.valor = {
     foto: achar('assets/img/mari', ['jpg', 'jpeg', 'png', 'webp']),
     video: achar('assets/video/mari', ['mp4', 'webm']),
     poster: achar('assets/img/mari-poster', ['jpg', 'jpeg', 'png', 'webp']),
-    youtube: process.env.MARI_VIDEO_YOUTUBE || null,
+    youtube: youtube || VIDEO_EXEMPLO,
+    youtubeExemplo: !youtube,
   };
   midiaCache.quando = Date.now();
   return midiaCache.valor;
@@ -4283,7 +4291,10 @@ app.use(express.static(ROOT, {
       res.setHeader('X-Robots-Tag', 'noindex');
       res.setHeader('Cache-Control', 'no-cache');
     } else if (/\.(css|js|svg|json|webmanifest)$/i.test(arquivo)) {
-      res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
+      // sempre revalida (o 304 custa um round-trip e alguns bytes): com max-age
+      // o navegador segurava o sprite antigo e o ícone novo simplesmente não
+      // aparecia — e o Cloudflare ainda esticava esse prazo para 4 horas
+      res.setHeader('Cache-Control', 'no-cache');
     } else {
       res.setHeader('Cache-Control', 'public, max-age=86400');
     }

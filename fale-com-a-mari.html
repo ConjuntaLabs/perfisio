@@ -38,8 +38,16 @@
     .selo .i { color: var(--primary); }
 
     /* ---------- vídeo / retrato ---------- */
+    .mari-coluna { display: flex; flex-direction: column; gap: 12px; }
+    .mari-nota { font-size: .78rem; color: var(--text-soft); line-height: 1.6; text-align: center; margin: 0; }
+    .mari-nota b { color: var(--ink); font-weight: 700; }
     .mari-midia { position: relative; border-radius: 22px; overflow: hidden; background: var(--ink);
       box-shadow: var(--shadow-lg); aspect-ratio: 4 / 5; display: grid; }
+    /* vídeo do YouTube é 16:9 — sem isto a miniatura vem cortada no retrato */
+    .mari-midia.deitado { aspect-ratio: 16 / 9; }
+    .mari-midia .marca-exemplo { position: absolute; top: 12px; left: 12px; z-index: 2;
+      background: rgba(15, 42, 46, .82); color: #fff; font-size: .7rem; font-weight: 800;
+      letter-spacing: .6px; text-transform: uppercase; padding: 6px 11px; border-radius: 99px; }
     .mari-midia video, .mari-midia img, .mari-midia iframe { width: 100%; height: 100%; object-fit: cover; border: none; display: block; }
     .mari-cartao { padding: 34px 30px; display: flex; flex-direction: column; justify-content: space-between;
       background: linear-gradient(155deg, var(--ink) 0%, #16413F 60%, var(--primary-dark) 140%); color: #fff; }
@@ -196,7 +204,10 @@
         <span class="selo"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#cartao"></use></svg> sem cartão, sem compromisso</span>
       </div>
     </div>
-    <div class="mari-midia" id="midia"></div>
+    <div class="mari-coluna">
+      <div class="mari-midia" id="midia"></div>
+      <p class="mari-nota" id="notaVideo" hidden></p>
+    </div>
   </section>
 
   <section class="sec">
@@ -342,14 +353,28 @@
         return;
       }
       if (MIDIA.youtube) {
+        const exemplo = !!MIDIA.youtubeExemplo;
+        const titulo = exemplo ? 'Vídeo de exemplo' : `Vídeo da ${esc(MARI.nome)}`;
+        box.classList.add('deitado');
         // só carrega o player (e os cookies do YouTube) depois do clique
         box.innerHTML = `
-          <img src="https://i.ytimg.com/vi/${esc(MIDIA.youtube)}/hqdefault.jpg" alt="Vídeo da ${esc(MARI.nome)}">
-          <button class="mari-play" type="button" aria-label="Assistir ao vídeo"><span>${ICO('abrir')}</span></button>`;
+          ${exemplo ? '<span class="marca-exemplo">prévia</span>' : ''}
+          <img src="https://i.ytimg.com/vi/${esc(MIDIA.youtube)}/maxresdefault.jpg" alt="${titulo}"
+               onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/${esc(MIDIA.youtube)}/hqdefault.jpg'">
+          <button class="mari-play" type="button" aria-label="Assistir ao vídeo"><span>${ICO('play')}</span></button>`;
         box.querySelector('.mari-play').addEventListener('click', () => {
-          box.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${esc(MIDIA.youtube)}?autoplay=1&rel=0"
-            title="Vídeo da ${esc(MARI.nome)}" allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+          box.innerHTML = `${exemplo ? '<span class="marca-exemplo">prévia</span>' : ''}
+            <iframe src="https://www.youtube-nocookie.com/embed/${esc(MIDIA.youtube)}?autoplay=1&rel=0"
+            title="${titulo}" allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
         });
+        const nota = document.getElementById('notaVideo');
+        if (nota) {
+          nota.innerHTML = exemplo
+            ? `<b>Vídeo de exemplo.</b> A apresentação da ${esc(MARI.nome)} entra aqui em breve — até lá,
+               é só marcar um horário que ela mostra tudo ao vivo.`
+            : `A ${esc(MARI.nome)} em 1 minuto. A conversa ao vivo é onde ela abre o sistema com o seu caso.`;
+          nota.hidden = false;
+        }
         return;
       }
       /* Sem vídeo e sem foto, o lugar é da apresentação da conversa — na voz do
