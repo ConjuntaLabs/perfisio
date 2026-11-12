@@ -3852,6 +3852,8 @@ async function servirSeo(res, arq, seo) {
   <meta name="twitter:card" content="summary_large_image">
   ${jsonld}${dados}
 `;
+  // página montada na hora (title, canonical, dados): o navegador revalida sempre
+  res.setHeader('Cache-Control', 'no-cache');
   res.type('html').send(html
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(seo.titulo)}</title>`)
     .replace('</head>', tags + '</head>'));
@@ -4269,9 +4271,23 @@ app.use((req, res, next) => {
 
 // HTML servido direto do disco é modelo (fisio.html sem id, cidade.html…), login ou painel:
 // as páginas indexáveis passam pelas rotas de SEO acima, com canonical
+/* Cache: sem Cache-Control nosso, quem decidia era o Cloudflare — e ele mandava
+   o navegador guardar CSS, JS e sprite por 4 horas. Resultado: depois de um
+   deploy o visitante ficava com HTML novo e assets velhos (os ícones chegaram
+   a aparecer em 300x150 porque o .i não estava no CSS guardado). Agora o
+   código revalida rápido e só as imagens ficam muito tempo em cache. */
 app.use(express.static(ROOT, {
   extensions: ['html'],
-  setHeaders: (res, arquivo) => { if (arquivo.endsWith('.html')) res.setHeader('X-Robots-Tag', 'noindex'); },
+  setHeaders: (res, arquivo) => {
+    if (arquivo.endsWith('.html')) {
+      res.setHeader('X-Robots-Tag', 'noindex');
+      res.setHeader('Cache-Control', 'no-cache');
+    } else if (/\.(css|js|svg|json|webmanifest)$/i.test(arquivo)) {
+      res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+    }
+  },
 }));
 
 app.use(async (req, res) => {

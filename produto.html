@@ -7,6 +7,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="/assets/img/simbolo-perfisio.svg">
   <link rel="stylesheet" href="/assets/css/app.css">
+  <!-- tamanho dos ícones não pode depender do CSS externo: se ele demorar,
+       falhar ou vier velho do cache, o <svg> cresce para 300x150 -->
+  <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}</style>
   <link rel="stylesheet" href="/assets/css/site.css">
   <style>
     .pr-wrap { max-width: 1100px; margin: 0 auto; padding: 30px 6vw 0; }
