@@ -286,7 +286,7 @@
             <div style="padding:0 16px 10px;font-size:.82rem;color:var(--text-soft);line-height:1.6;">
               O catálogo é um só para todo o PerFisio. Fisioterapeuta logado no painel ganha
               <b id="prodDesconto">5%</b> em todo o pedido — para mudar o percentual, defina
-              <code>LOJA_DESCONTO_FISIO</code> no Railway.
+              <code>LOJA_DESCONTO_FISIO</code> no Dokploy (variáveis de ambiente).
             </div>
             <div class="table-wrap" style="padding-top:4px;">
               <table class="data">
@@ -733,7 +733,7 @@
               ${d.dominio
                 ? `<a href="https://${d.dominio}" target="_blank" style="font-weight:700;color:var(--primary-dark);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#globo"></use></svg> ${d.dominio}</a>
                    <span class="badge ${d.dominio_status === 'ativo' ? 'green' : 'amber'}">${d.dominio_status === 'ativo' ? 'ativo' : 'DNS pendente'}</span>
-                   <span style="color:var(--text-soft);font-size:.78rem;">Cadastre no Railway (Settings → Networking → Custom Domain) para emitir o certificado.</span>`
+                   <span style="color:var(--text-soft);font-size:.78rem;">Adicione em Dokploy → Application → Domains (HTTPS + Let's Encrypt) para emitir o certificado.</span>`
                 : '<span style="color:var(--text-soft);">Nenhum — a clínica configura em Configurações → Domínio próprio</span>'}
             </div>
           </div>
