@@ -65,6 +65,7 @@
         <div class="nav-label">Marketing</div>
         <a class="nav-item" data-sec="social" onclick="irSecao('social')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#celular"></use></svg></span>Posts · Aprovações</a>
         <a class="nav-item" data-sec="assinatura" onclick="irSecao('assinatura')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#email"></use></svg></span>Assinatura de e-mail</a>
+        <a class="nav-item" data-sec="demos" onclick="irSecao('demos')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#camera"></use></svg></span>Conversas da Mari</a>
         <div class="nav-label">Loja</div>
         <a class="nav-item" data-sec="produtos" onclick="irSecao('produtos')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#loja"></use></svg></span>Produtos</a>
         <a class="nav-item" data-sec="pedidos" onclick="irSecao('pedidos')"><span class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#carrinho"></use></svg></span>Pedidos</a>
@@ -236,6 +237,41 @@
                     perguntam antes de mostrar imagens — é normal, e o resto da assinatura continua legível sem ele.</p>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONVERSAS DA MARI -->
+        <div data-sec-panel="demos" style="display:none;">
+          <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+            <div class="stat-card">
+              <div class="s-top"><span class="s-label">Marcadas</span><div class="s-ico" style="background:var(--primary-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg></div></div>
+              <div class="s-value" id="dmMarcadas">—</div><div class="s-delta"><span class="muted" id="dmProxima"></span></div>
+            </div>
+            <div class="stat-card">
+              <div class="s-top"><span class="s-label">Feitas</span><div class="s-ico" style="background:var(--green-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#confirmado"></use></svg></div></div>
+              <div class="s-value" id="dmFeitas">—</div><div class="s-delta"><span class="muted">apresentações já realizadas</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="s-top"><span class="s-label">Faltaram</span><div class="s-ico" style="background:var(--amber-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#faltou"></use></svg></div></div>
+              <div class="s-value" id="dmFaltas">—</div><div class="s-delta"><span class="muted">não apareceram na hora</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="s-top"><span class="s-label">Total</span><div class="s-ico" style="background:var(--blue-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pessoas"></use></svg></div></div>
+              <div class="s-value" id="dmTotal">—</div><div class="s-delta"><span class="muted">desde o começo da página</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h3>Agenda de apresentações</h3>
+              <a class="btn btn-ghost btn-sm" href="/fale-com-a-mari" target="_blank">
+                <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#externo"></use></svg> Ver a página</a>
+            </div>
+            <div class="table-wrap" style="padding-top:8px;">
+              <table class="data">
+                <thead><tr><th>Quando</th><th>Fisioterapeuta</th><th>Contato</th><th>Quer ver</th><th>Situação</th></tr></thead>
+                <tbody id="demoRows"><tr><td colspan="5" class="empty">Carregando...</td></tr></tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -459,6 +495,7 @@
       fisios: ['Profissionais', 'Fisioterapeutas de todas as clínicas'],
       social: ['Posts · Aprovações', 'Conteúdo para as redes das clínicas'],
       assinatura: ['Assinatura de e-mail', 'A mesma cara em toda mensagem que sai da equipe'],
+      demos: ['Conversas da Mari', 'Apresentações marcadas em /fale-com-a-mari'],
       produtos: ['Produtos da loja', 'Catálogo único — quem usa o PerFisio tem 5% em todo pedido'],
       pedidos: ['Pedidos da loja', 'Pedidos do site e dos painéis das clínicas'],
     };
@@ -533,6 +570,7 @@
       renderClinicas();
       carregarFisios();
       carregarSocial();
+      carregarDemos().catch(e => console.error('conversas da Mari:', e.message));
       carregarProdutos().catch(e => console.error('loja (produtos):', e.message));
       carregarPedidos().catch(e => console.error('loja (pedidos):', e.message));
       const opts = clinicas.filter(c => c.ativa).map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
@@ -1283,6 +1321,47 @@
       if (!confirm(`Excluir "${p ? p.nome : 'produto'}" da loja? Os pedidos antigos continuam com o item registrado.`)) return;
       try { await PF.api('/api/admin/produtos/' + id, { method: 'DELETE' }); App.toast('Produto excluído'); await carregarProdutos(); }
       catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* ---------- conversas da Mari (/fale-com-a-mari) ---------- */
+    const ST_DEMO = ['marcada', 'confirmada', 'feita', 'faltou', 'cancelada'];
+
+    async function carregarDemos() {
+      const d = await PF.api('/api/admin/demos');
+      const demos = d.demos;
+      const hoje = new Date().toISOString().slice(0, 10);
+      const futuras = demos.filter(x => x.status === 'marcada' && x.data >= hoje)
+        .sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora));
+      document.getElementById('dmMarcadas').textContent = futuras.length;
+      document.getElementById('dmProxima').textContent = futuras.length
+        ? `próxima em ${PF.fmtData(futuras[0].data)}, ${futuras[0].hora}` : 'nenhuma conversa à frente';
+      document.getElementById('dmFeitas').textContent = demos.filter(x => x.status === 'feita').length;
+      document.getElementById('dmFaltas').textContent = demos.filter(x => x.status === 'faltou').length;
+      document.getElementById('dmTotal').textContent = demos.length;
+
+      document.getElementById('demoRows').innerHTML = demos.map(x => {
+        const zap = (x.whatsapp || '').replace(/\D/g, '');
+        return `<tr>
+          <td><div class="p-name" style="font-weight:700;">${PF.fmtData(x.data)} · ${esc(x.hora)}</div>
+            <div class="p-sub" style="font-size:.72rem;color:var(--text-soft);">${esc(x.codigo)}</div></td>
+          <td><div class="p-name">${esc(x.nome)}</div>
+            <div class="p-sub" style="font-size:.74rem;color:var(--text-soft);">
+              ${esc(x.cidade || '')}${x.crefito ? ' · CREFITO ' + esc(x.crefito) : ''}</div></td>
+          <td style="font-size:.8rem;line-height:1.6;">
+            <a href="mailto:${esc(x.email)}" style="color:var(--primary-dark);font-weight:600;">${esc(x.email)}</a><br>
+            ${zap ? `<a href="https://wa.me/55${zap}" target="_blank" style="color:var(--primary-dark);">${esc(x.whatsapp)}</a>` : '—'}</td>
+          <td style="font-size:.8rem;max-width:230px;line-height:1.55;">${esc(x.interesse || 'Visão geral')}
+            ${x.obs ? `<br><em style="color:var(--text-soft);">${esc(x.obs)}</em>` : ''}</td>
+          <td><select onchange="mudarStatusDemo('${x.id}', this.value)" style="font-size:.8rem;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;">
+            ${ST_DEMO.map(s => `<option value="${s}"${s === x.status ? ' selected' : ''}>${s}</option>`).join('')}
+          </select></td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="5" class="empty">Nenhuma conversa marcada ainda.</td></tr>';
+    }
+
+    async function mudarStatusDemo(id, status) {
+      try { await PF.api('/api/admin/demos/' + id, { method: 'PUT', body: { status } }); App.toast('Situação atualizada'); await carregarDemos(); }
+      catch (e) { App.toast(e.message, 'error'); await carregarDemos(); }
     }
 
     const ST_PEDIDO = ['novo', 'pago', 'enviado', 'entregue', 'cancelado'];

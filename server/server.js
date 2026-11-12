@@ -359,6 +359,17 @@ CREATE TABLE IF NOT EXISTS pedido_itens (
   preco numeric(10,2) NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS pedido_itens_idx ON pedido_itens (pedido_id);
+-- apresentações do PerFisio na agenda da Mari (página /fale-com-a-mari)
+CREATE TABLE IF NOT EXISTS demos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  codigo text NOT NULL UNIQUE,
+  nome text NOT NULL, email text NOT NULL, whatsapp text,
+  crefito text, cidade text, interesse text, obs text,
+  data date NOT NULL, hora text NOT NULL,
+  origem text, status text NOT NULL DEFAULT 'marcada',
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS demos_horario_uniq ON demos (data, hora) WHERE status <> 'cancelada';
 `;
 
 /* migração de dados: pacientes com histórico ganham um tratamento inicial */
@@ -2790,6 +2801,168 @@ app.put('/api/admin/pedidos/:id', superauth, async (req, res) => {
   res.json(p);
 });
 
+/* ============ APRESENTAÇÃO COM A MARI ============
+   /fale-com-a-mari: o fisioterapeuta escolhe um horário na agenda da Mari e
+   recebe uma conversa de 30 minutos por vídeo. Agenda própria e simples —
+   dias da semana + horários fixos; o que já foi marcado some da lista. */
+const MARI = {
+  nome: process.env.MARI_NOME || 'Mari',
+  email: (process.env.MARI_EMAIL || process.env.SUPERADMIN_EMAIL || '').toLowerCase(),
+  whatsapp: (process.env.MARI_WHATSAPP || '').replace(/\D/g, ''),
+  frase: process.env.MARI_FRASE || null,   // a fala dela, quando ela mesma escrever
+
+  duracao: 30,
+  dias: [1, 2, 3, 4, 5],            // segunda a sexta
+  horas: ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'],
+  antecedencia: 3,                  // horas mínimas entre agora e a conversa
+  janela: 60,                       // quantos dias à frente a agenda abre
+  fuso: 'America/Sao_Paulo',
+};
+const AGENDA_MARI = { dias: MARI.dias, horas: MARI.horas, duracao: MARI.duracao, janela: MARI.janela };
+
+// "agora" no fuso de Brasília, como 'YYYY-MM-DD HH:MM' (o servidor roda em UTC)
+function momentoSP(deslocamentoHoras = 0) {
+  const f = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: MARI.fuso, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+  const [data, hora] = f.format(new Date(Date.now() + deslocamentoHoras * 3600e3)).split(' ');
+  return { data, hora: hora.slice(0, 5), carimbo: `${data} ${hora.slice(0, 5)}` };
+}
+const diaDaSemana = data => new Date(data + 'T12:00:00Z').getUTCDay();
+const dataPorExtenso = data => new Date(data + 'T12:00:00Z')
+  .toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+
+function horarioValido(data, hora) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data) || !MARI.horas.includes(hora)) return 'Escolha um horário da agenda';
+  if (!MARI.dias.includes(diaDaSemana(data))) return 'A Mari atende de segunda a sexta';
+  const limite = momentoSP(MARI.antecedencia).carimbo;
+  if (`${data} ${hora}` < limite) return `Escolha um horário com pelo menos ${MARI.antecedencia}h de antecedência`;
+  const ultimo = new Date(Date.now() + MARI.janela * 86400e3).toISOString().slice(0, 10);
+  if (data > ultimo) return 'A agenda ainda não está aberta para essa data';
+  return null;
+}
+
+app.get('/api/public/mari/agenda', async (req, res) => {
+  const de = /^\d{4}-\d{2}-\d{2}$/.test(req.query.from || '') ? req.query.from : momentoSP().data;
+  const ate = /^\d{4}-\d{2}-\d{2}$/.test(req.query.to || '') ? req.query.to
+    : new Date(Date.now() + MARI.janela * 86400e3).toISOString().slice(0, 10);
+  const r = await pool.query(
+    `SELECT to_char(data, 'YYYY-MM-DD') AS data, hora FROM demos
+     WHERE status <> 'cancelada' AND data BETWEEN $1 AND $2`, [de, ate]);
+  res.json({ ...AGENDA_MARI, agora: momentoSP(MARI.antecedencia).carimbo, ocupados: r.rows });
+});
+
+const htmlDemoParaMari = d => `
+  <div style="font-family:Arial,sans-serif;font-size:15px;color:#26343A;line-height:1.6;">
+    <p><b>${esc(d.nome)}</b> marcou uma apresentação do PerFisio.</p>
+    <p><b>${dataPorExtenso(d.data)} às ${esc(d.hora)}</b> (horário de Brasília) · código ${esc(d.codigo)}</p>
+    <p>
+      E-mail: ${esc(d.email)}<br>
+      WhatsApp: ${esc(d.whatsapp || '—')}<br>
+      ${d.crefito ? `CREFITO: ${esc(d.crefito)}<br>` : ''}
+      ${d.cidade ? `Cidade: ${esc(d.cidade)}<br>` : ''}
+      ${d.interesse ? `Quer ver: ${esc(d.interesse)}<br>` : ''}
+    </p>
+    ${d.obs ? `<p><i>${esc(d.obs)}</i></p>` : ''}
+  </div>`;
+
+const htmlDemoParaFisio = d => `
+  <div style="font-family:Arial,sans-serif;font-size:15px;color:#26343A;line-height:1.6;">
+    <p>Olá, ${esc(d.nome.split(' ')[0])}!</p>
+    <p>Sua conversa com a ${esc(MARI.nome)} está marcada para
+       <b>${dataPorExtenso(d.data)} às ${esc(d.hora)}</b> (horário de Brasília).
+       São ${MARI.duracao} minutos por vídeo — o link chega antes, no seu WhatsApp ou neste e-mail.</p>
+    <p>Precisa remarcar? É só responder este e-mail.</p>
+    <p style="color:#64737A;font-size:13px;">Código ${esc(d.codigo)} · PerFisio</p>
+  </div>`;
+
+app.post('/api/public/mari/agendar', async (req, res) => {
+  const b = req.body || {};
+  const nome = String(b.nome || '').trim();
+  const email = String(b.email || '').trim().toLowerCase();
+  const whatsapp = String(b.whatsapp || '').trim();
+  const data = String(b.data || '').trim();
+  const hora = String(b.hora || '').trim();
+
+  if (nome.length < 3) return res.status(400).json({ erro: 'Informe seu nome' });
+  if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) return res.status(400).json({ erro: 'Informe um e-mail válido' });
+  if (!/^\d{10,13}$/.test(whatsapp.replace(/\D/g, ''))) return res.status(400).json({ erro: 'Informe um WhatsApp com DDD' });
+  const problema = horarioValido(data, hora);
+  if (problema) return res.status(400).json({ erro: problema });
+
+  const jaTem = await pool.query(
+    `SELECT codigo, to_char(data, 'YYYY-MM-DD') AS data, hora FROM demos
+     WHERE lower(email) = $1 AND status = 'marcada' AND (data || ' ' || hora) >= $2 LIMIT 1`,
+    [email, momentoSP().carimbo]);
+  if (jaTem.rowCount) {
+    const j = jaTem.rows[0];
+    return res.status(409).json({
+      erro: `Você já tem uma conversa marcada para ${dataPorExtenso(j.data)} às ${j.hora}. Responda o e-mail da confirmação para remarcar.`,
+    });
+  }
+
+  let demo;
+  for (let tentativa = 0; tentativa < 5 && !demo; tentativa++) {
+    const codigo = 'MARI-' + Math.random().toString(36).slice(2, 7).toUpperCase();
+    try {
+      const r = await pool.query(
+        `INSERT INTO demos (codigo, nome, email, whatsapp, crefito, cidade, interesse, obs, data, hora, origem)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+         ON CONFLICT (codigo) DO NOTHING
+         RETURNING id, codigo, nome, email, whatsapp, crefito, cidade, interesse, obs,
+                   to_char(data, 'YYYY-MM-DD') AS data, hora`,
+        [codigo, nome, email, whatsapp, String(b.crefito || '').trim() || null,
+          String(b.cidade || '').trim() || null, String(b.interesse || '').trim() || null,
+          String(b.obs || '').trim() || null, data, hora, String(b.origem || '').trim() || null]);
+      if (r.rowCount) demo = r.rows[0];
+    } catch (e) {
+      // o índice único guarda o horário: dois cliques no mesmo minuto não viram duas conversas
+      if (e.code === '23505') return res.status(409).json({ erro: 'Esse horário acabou de ser reservado. Escolha outro, por favor.' });
+      throw e;
+    }
+  }
+  if (!demo) return res.status(500).json({ erro: 'Não foi possível gerar o código da conversa' });
+
+  if (MARI.email) {
+    await enviarEmail({
+      para: MARI.email, assunto: `Apresentação marcada: ${demo.nome} · ${demo.data} ${demo.hora}`,
+      html: htmlDemoParaMari(demo),
+    }).catch(e => console.error('aviso da demo para a Mari falhou:', e.message));
+  }
+  await enviarEmail({
+    para: demo.email, assunto: `Conversa com a ${MARI.nome} marcada — ${dataPorExtenso(demo.data)}, ${demo.hora}`,
+    html: htmlDemoParaFisio(demo),
+  }).catch(e => console.error('confirmação da demo falhou:', e.message));
+
+  // UTC para o convite .ics que o fisioterapeuta baixa (Brasília é UTC-3 o ano todo)
+  const emUTC = minutos => new Date(new Date(`${demo.data}T${demo.hora}:00-03:00`).getTime() + minutos * 60000)
+    .toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  res.status(201).json({
+    codigo: demo.codigo, data: demo.data, hora: demo.hora,
+    duracao: MARI.duracao, quando: dataPorExtenso(demo.data),
+    inicio_utc: emUTC(0), fim_utc: emUTC(MARI.duracao),
+  });
+});
+
+const STATUS_DEMO = ['marcada', 'confirmada', 'feita', 'faltou', 'cancelada'];
+app.get('/api/admin/demos', superauth, async (req, res) => {
+  const r = await pool.query(
+    `SELECT id, codigo, nome, email, whatsapp, crefito, cidade, interesse, obs, status, origem,
+            to_char(data, 'YYYY-MM-DD') AS data, hora, criado_em
+     FROM demos ORDER BY data DESC, hora DESC LIMIT 200`);
+  res.json({ mari: { nome: MARI.nome, duracao: MARI.duracao, horas: MARI.horas, dias: MARI.dias }, demos: r.rows });
+});
+
+app.put('/api/admin/demos/:id', superauth, async (req, res) => {
+  const status = String((req.body || {}).status || '');
+  if (!STATUS_DEMO.includes(status)) return res.status(400).json({ erro: 'Status inválido' });
+  const r = await pool.query('UPDATE demos SET status=$2 WHERE id=$1 RETURNING codigo, status', [req.params.id, status]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Conversa não encontrada' });
+  res.json(r.rows[0]);
+});
+
 const TABLES = {
   fisios: ['nome', 'crefito', 'esp', 'cor', 'comissao', 'ativo',
     'publico', 'especialidades', 'domiciliar', 'bairro', 'cidade', 'lat', 'lng', 'preco', 'bio',
@@ -3810,12 +3983,53 @@ const POSTS = [
 
 /* o WordPress usava barra no fim; manda pra URL canônica sem barra
    (senão os links relativos da página quebram e o Google vê duas URLs) */
-const ROTAS_CONTEUDO = new Set(['/site-para-fisioterapeutas', '/blog', '/loja', ...POSTS.map(p => `/blog/${p.slug}`)]);
+const ROTAS_CONTEUDO = new Set(['/site-para-fisioterapeutas', '/blog', '/loja', '/fale-com-a-mari', ...POSTS.map(p => `/blog/${p.slug}`)]);
 app.get(/^\/[a-z0-9-]+(\/[a-z0-9-]+)?\/$/, (req, res, next) => {
   const semBarra = req.path.slice(0, -1);
   // as páginas de produto são dinâmicas: /loja/{slug}/ também vai para a URL sem barra
   const conhecida = ROTAS_CONTEUDO.has(semBarra) || semBarra.startsWith('/loja/');
   return conhecida ? res.redirect(301, semBarra) : next();
+});
+
+/* ---------- APRESENTAÇÃO COM A MARI ----------
+   A foto e o vídeo são opcionais: a página mostra o que existir na pasta
+   (assets/img/mari.jpg e assets/video/mari.mp4) ou, na falta deles, o cartão
+   com a fala dela. Assim o Thiago só precisa soltar o arquivo no lugar. */
+const midiaCache = { quando: 0, valor: null };
+function midiaDaMari() {
+  if (Date.now() - midiaCache.quando < 30000 && midiaCache.valor) return midiaCache.valor;
+  const existe = arq => { try { return require('node:fs').existsSync(path.join(ROOT, arq)); } catch (e) { return false; } };
+  const achar = (base, extensoes) => extensoes.map(e => `${base}.${e}`).find(existe) || null;
+  midiaCache.valor = {
+    foto: achar('assets/img/mari', ['jpg', 'jpeg', 'png', 'webp']),
+    video: achar('assets/video/mari', ['mp4', 'webm']),
+    poster: achar('assets/img/mari-poster', ['jpg', 'jpeg', 'png', 'webp']),
+    youtube: process.env.MARI_VIDEO_YOUTUBE || null,
+  };
+  midiaCache.quando = Date.now();
+  return midiaCache.valor;
+}
+
+app.get('/fale-com-a-mari', async (req, res, next) => {
+  try {
+    const url = urlPublica(req, '/fale-com-a-mari');
+    await servirSeo(res, 'fale-com-a-mari.html', {
+      titulo: `Converse com a ${MARI.nome} — uma fisioterapeuta mostra o PerFisio`,
+      descricao: `${MARI.duracao} minutos por vídeo, sem compromisso: a ${MARI.nome} é fisioterapeuta e mostra, `
+        + `com o seu caso, como o PerFisio organiza a agenda, o prontuário e a captação de pacientes. `
+        + `Escolha o horário na agenda dela.`,
+      url, tipo: 'profile',
+      dados: {
+        mari: { nome: MARI.nome, duracao: MARI.duracao, whatsapp: MARI.whatsapp, frase: MARI.frase },
+        midia: midiaDaMari(),
+      },
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'WebPage', inLanguage: 'pt-BR',
+        name: `Converse com a ${MARI.nome} sobre o PerFisio`, url,
+        about: { '@type': 'SoftwareApplication', name: 'PerFisio', applicationCategory: 'BusinessApplication' },
+      },
+    });
+  } catch (e) { next(e); }
 });
 
 /* ---------- LOJA ---------- */
@@ -4038,6 +4252,7 @@ app.get('/sitemap.xml', async (req, res) => {
       { loc: '/', prio: '1.0' },
       { loc: '/planos.html', prio: '0.8' },
       { loc: '/site-para-fisioterapeutas', prio: '0.9' },
+      { loc: '/fale-com-a-mari', prio: '0.8' },
       { loc: '/loja', prio: '0.8' },
       ...produtos.rows.map(p => ({ loc: `/loja/${p.slug}`, prio: '0.6' })),
       { loc: '/blog', prio: '0.6' },
@@ -4057,6 +4272,7 @@ app.get('/sitemap.xml', async (req, res) => {
    (/index.html, /blog.html, /planos…) levam 301 para a versão com canonical. */
 const HTML_CANONICO = new Map([
   ['/index.html', '/'], ['/planos', '/planos.html'], ['/cadastro.html', '/cadastro'], ['/loja.html', '/loja'],
+  ['/fale-com-a-mari.html', '/fale-com-a-mari'], ['/fale-com-mari', '/fale-com-a-mari'],
   ['/site-para-fisioterapeutas.html', '/site-para-fisioterapeutas'], ['/blog.html', '/blog'],
   ...POSTS.map(p => [`/${p.slug}.html`, `/blog/${p.slug}`]),
 ]);

@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Converse com a Mari — uma fisioterapeuta mostra o PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <link rel="stylesheet" href="/assets/css/site.css">
+  <style>
+    /* ---------- títulos animados ----------
+       Ficam escondidos e têm uma animação de reserva no próprio CSS: se a GSAP
+       não chegar a tempo (ou nem chegar), o título aparece sozinho em 0,7s.
+       Quando ela chega antes disso, o JS marca html.gsap-ok, desliga a reserva
+       e assume a entrada palavra por palavra. */
+    .anima-t { opacity: 0; animation: tituloReserva .45s .7s forwards; }
+    html.gsap-ok .anima-t { opacity: 1; animation: none; }
+    @keyframes tituloReserva { to { opacity: 1; } }
+    .anima-t .pal { display: inline-block; overflow: hidden; vertical-align: bottom; }
+    .anima-t .pal .in { display: inline-block; }
+    @media (prefers-reduced-motion: reduce) { .anima-t { opacity: 1; animation: none; } }
+
+    /* ---------- hero ---------- */
+    .mari-hero { max-width: 1140px; margin: 0 auto; padding: 56px 6vw 10px;
+      display: grid; grid-template-columns: 1.05fr .95fr; gap: 46px; align-items: center; }
+    .mari-hero .kicker { font-size: .76rem; font-weight: 800; letter-spacing: 2.4px; text-transform: uppercase; color: var(--primary-dark); }
+    .mari-hero h1 { font-size: clamp(2rem, 4.4vw, 3rem); font-weight: 900; color: var(--ink); letter-spacing: -1.4px; line-height: 1.1; margin-top: 14px; }
+    .mari-hero h1 em { color: var(--primary); font-style: normal; }
+    .mari-hero .lead { color: var(--text); font-size: 1.05rem; line-height: 1.75; margin-top: 18px; max-width: 540px; }
+    .mari-hero .acoes { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
+    .mari-hero .acoes .btn { padding: 13px 26px; }
+    .selos { display: flex; gap: 10px 22px; flex-wrap: wrap; margin-top: 26px; }
+    .selo { display: flex; align-items: center; gap: 8px; font-size: .84rem; font-weight: 600; color: var(--text-soft); }
+    .selo .i { color: var(--primary); }
+
+    /* ---------- vídeo / retrato ---------- */
+    .mari-midia { position: relative; border-radius: 22px; overflow: hidden; background: var(--ink);
+      box-shadow: var(--shadow-lg); aspect-ratio: 4 / 5; display: grid; }
+    .mari-midia video, .mari-midia img, .mari-midia iframe { width: 100%; height: 100%; object-fit: cover; border: none; display: block; }
+    .mari-cartao { padding: 34px 30px; display: flex; flex-direction: column; justify-content: space-between;
+      background: linear-gradient(155deg, var(--ink) 0%, #16413F 60%, var(--primary-dark) 140%); color: #fff; }
+    .mari-cartao .aspas { font-size: 2.6rem; line-height: 1; color: var(--accent); font-weight: 900; }
+    .mari-cartao blockquote { font-size: 1.12rem; font-weight: 700; line-height: 1.55; letter-spacing: -.3px; margin: 10px 0 0; }
+    .mari-cartao .quem { display: flex; align-items: center; gap: 12px; margin-top: 26px; }
+    .mari-cartao .quem .av { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; overflow: hidden;
+      background: var(--primary); color: #fff; font-weight: 900; font-size: 1.05rem; flex: none; }
+    .mari-cartao .quem .av img { width: 100%; height: 100%; object-fit: cover; }
+    .mari-cartao .quem b { display: block; font-size: .95rem; }
+    .mari-cartao .quem span { font-size: .78rem; color: #9FB4B1; }
+    .mari-play { position: absolute; inset: 0; display: grid; place-items: center; border: none; cursor: pointer;
+      background: rgba(15, 42, 46, .34); color: #fff; font-family: inherit; }
+    .mari-play span { width: 74px; height: 74px; border-radius: 50%; background: #fff; color: var(--primary-dark);
+      display: grid; place-items: center; box-shadow: 0 10px 30px rgba(0,0,0,.28); }
+    .mari-play span .i { width: 30px; height: 30px; }
+
+    /* ---------- seções ---------- */
+    .sec { max-width: 1080px; margin: 0 auto; padding: 68px 6vw 0; }
+    .sec h2 { font-size: clamp(1.45rem, 3vw, 2rem); font-weight: 900; color: var(--ink); letter-spacing: -.8px; text-align: center; line-height: 1.2; }
+    .sec h2 em { color: var(--primary); font-style: normal; }
+    .sec .sub { color: var(--text-soft); text-align: center; margin: 14px auto 0; font-size: .98rem; max-width: 620px; line-height: 1.75; }
+
+    .cards3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 38px; }
+    .card-m { border: 1px solid var(--line); border-radius: 18px; padding: 26px 24px; background: #fff; box-shadow: var(--shadow); }
+    .card-m .ico { width: 46px; height: 46px; border-radius: 13px; background: var(--primary-soft); color: var(--primary-dark);
+      display: grid; place-items: center; margin-bottom: 15px; }
+    .card-m .ico .i { width: 22px; height: 22px; }
+    .card-m h3 { font-size: 1.02rem; font-weight: 800; color: var(--ink); letter-spacing: -.2px; }
+    .card-m p { color: var(--text-soft); font-size: .89rem; line-height: 1.7; margin-top: 8px; }
+
+    .roteiro { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin-top: 40px;
+      border: 1px solid var(--line); border-radius: 18px; background: #fff; overflow: hidden; box-shadow: var(--shadow); }
+    .passo { padding: 26px 24px; border-right: 1px solid var(--line); }
+    .passo:last-child { border-right: none; }
+    .passo .min { font-size: .72rem; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: var(--primary); }
+    .passo h3 { font-size: 1rem; font-weight: 800; color: var(--ink); margin-top: 9px; }
+    .passo p { color: var(--text-soft); font-size: .87rem; line-height: 1.7; margin-top: 7px; }
+
+    .perguntas { max-width: 760px; margin: 40px auto 0; }
+    .perguntas details { border: 1px solid var(--line); border-radius: 14px; background: #fff; padding: 16px 20px; margin-bottom: 10px; }
+    .perguntas summary { font-size: .95rem; font-weight: 700; color: var(--ink); cursor: pointer; list-style: none; display: flex; gap: 12px; align-items: center; }
+    .perguntas summary::-webkit-details-marker { display: none; }
+    .perguntas summary::after { content: '+'; margin-left: auto; font-size: 1.2rem; color: var(--primary); font-weight: 700; }
+    .perguntas details[open] summary::after { content: '−'; }
+    .perguntas p { color: var(--text-soft); font-size: .9rem; line-height: 1.75; margin-top: 12px; }
+
+    /* ---------- agenda ---------- */
+    /* o cabeçalho é sticky: o atalho #agendar precisa parar abaixo dele */
+    .agenda-sec { max-width: 1080px; margin: 72px auto 0; padding: 0 6vw; scroll-margin-top: 96px; }
+    .agenda-caixa { background: #fff; border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow-lg);
+      display: grid; grid-template-columns: 300px 1fr; overflow: hidden; min-height: 470px; }
+    .agenda-lado { padding: 30px 26px; background: linear-gradient(170deg, #F0FAF7, #fff 70%); border-right: 1px solid var(--line); }
+    .agenda-lado .av { width: 56px; height: 56px; border-radius: 50%; background: var(--primary); color: #fff;
+      display: grid; place-items: center; font-weight: 900; font-size: 1.15rem; overflow: hidden; }
+    .agenda-lado .av img { width: 100%; height: 100%; object-fit: cover; }
+    .agenda-lado h3 { font-size: 1.1rem; font-weight: 800; color: var(--ink); margin-top: 14px; letter-spacing: -.3px; }
+    .agenda-lado .papel { font-size: .84rem; color: var(--text-soft); margin-top: 3px; }
+    .agenda-lado .meta { margin-top: 20px; display: flex; flex-direction: column; gap: 11px; }
+    .agenda-lado .meta div { display: flex; gap: 10px; align-items: flex-start; font-size: .85rem; color: var(--text); line-height: 1.5; }
+    .agenda-lado .meta .i { color: var(--primary); flex: none; margin-top: 1px; }
+    .agenda-lado .nota { margin-top: 22px; font-size: .8rem; color: var(--text-soft); line-height: 1.65; border-top: 1px solid var(--line); padding-top: 16px; }
+
+    .agenda-painel { padding: 26px 28px; }
+    .cal-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .cal-topo .mes { font-size: .98rem; font-weight: 800; color: var(--ink); }
+    .cal-topo .mes::first-letter { text-transform: uppercase; }
+    .cal-topo .navs { display: flex; gap: 6px; }
+    .cal-topo button { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--line); background: #fff;
+      color: var(--text-soft); cursor: pointer; font-size: 1rem; line-height: 1; font-family: inherit; }
+    .cal-topo button:disabled { opacity: .35; cursor: default; }
+    .agenda-grade { display: grid; grid-template-columns: 1fr 190px; gap: 24px; }
+    .semana, .dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+    .semana span { text-align: center; font-size: .66rem; font-weight: 800; color: var(--text-soft); text-transform: uppercase; letter-spacing: .6px; padding-bottom: 6px; }
+    .dias button { aspect-ratio: 1; border-radius: 10px; border: none; background: var(--primary-soft); color: var(--primary-dark);
+      font-size: .88rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .dias button:hover:not(:disabled) { background: #CDECE4; }
+    .dias button.vazio { background: none; cursor: default; }
+    .dias button:disabled { background: none; color: #C7D6D3; cursor: default; font-weight: 500; }
+    .dias button.sel { background: var(--ink); color: #fff; }
+    .dias button.hoje:not(.sel) { box-shadow: inset 0 0 0 1.5px var(--primary); }
+    .horarios { border-left: 1px solid var(--line); padding-left: 22px; }
+    .horarios .tit { font-size: .8rem; font-weight: 800; color: var(--ink); margin-bottom: 12px; }
+    .horarios .tit span { display: block; font-weight: 500; color: var(--text-soft); font-size: .76rem; margin-top: 3px; }
+    .slots { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; padding-right: 4px; }
+    .slots button { border: 1px solid var(--primary); background: #fff; color: var(--primary-dark); border-radius: 9px;
+      padding: 10px 0; font-size: .88rem; font-weight: 700; cursor: pointer; font-family: inherit; width: 100%; }
+    .slots button:hover { background: var(--primary); color: #fff; }
+    .slots .nenhum { font-size: .82rem; color: var(--text-soft); line-height: 1.6; }
+
+    .form-demo .resumo { background: var(--primary-soft); color: var(--primary-dark); border-radius: 12px;
+      padding: 14px 16px; font-size: .9rem; font-weight: 700; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .form-demo .resumo button { margin-left: auto; background: none; border: none; color: var(--primary-dark);
+      font-weight: 700; font-size: .8rem; cursor: pointer; font-family: inherit; text-decoration: underline; }
+    .form-demo .campos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 20px; }
+    .form-demo .campos .full { grid-column: 1 / -1; }
+    .pronto { text-align: center; padding: 30px 24px; }
+    .pronto .marca { width: 66px; height: 66px; border-radius: 50%; background: var(--green-soft); color: var(--green);
+      display: inline-grid; place-items: center; }
+    .pronto .marca .i { width: 32px; height: 32px; }
+    .pronto h3 { font-size: 1.3rem; font-weight: 900; color: var(--ink); margin: 14px 0 6px; letter-spacing: -.4px; }
+    .pronto p { font-size: .92rem; color: var(--text); line-height: 1.7; max-width: 420px; margin: 0 auto; }
+    .pronto .codigo { display: inline-block; margin-top: 16px; background: var(--bg); border: 1px dashed var(--line);
+      border-radius: 10px; padding: 10px 18px; font-weight: 800; color: var(--ink); letter-spacing: 1px; }
+    .pronto .depois { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
+
+    .fecho { margin: 80px 0 0; padding: 62px 6vw; background: var(--ink); color: #fff; text-align: center; }
+    .fecho h2 { font-size: clamp(1.5rem, 3.4vw, 2rem); font-weight: 900; letter-spacing: -.7px; }
+    .fecho p { color: #9DB3B0; margin: 14px auto 26px; max-width: 540px; line-height: 1.75; }
+    .fecho .btn { padding: 13px 26px; }
+
+    @media (max-width: 980px) {
+      .mari-hero { grid-template-columns: 1fr; gap: 32px; padding-top: 40px; }
+      .mari-midia { max-width: 420px; }
+      .cards3, .roteiro { grid-template-columns: 1fr; }
+      .passo { border-right: none; border-bottom: 1px solid var(--line); }
+      .passo:last-child { border-bottom: none; }
+      .agenda-caixa { grid-template-columns: 1fr; }
+      .agenda-lado { border-right: none; border-bottom: 1px solid var(--line); }
+      .agenda-grade { grid-template-columns: 1fr; }
+      .horarios { border-left: none; border-top: 1px solid var(--line); padding-left: 0; padding-top: 18px; }
+      .slots { max-height: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+      .form-demo .campos { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="lp-header lp-loja">
+    <a class="logo" href="/"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
+    <nav>
+      <a href="/site-para-fisioterapeutas">Para fisioterapeutas</a>
+      <a href="/planos.html">Planos</a>
+      <a href="/loja">Loja</a>
+      <a href="/blog">Blog</a>
+      <a href="/login.html" class="btn btn-ghost btn-sm">Entrar</a>
+      <a href="#agendar" class="btn btn-primary btn-sm">Escolher um horário</a>
+    </nav>
+  </header>
+
+  <section class="mari-hero">
+    <div>
+      <div class="kicker">Apresentação ao vivo</div>
+      <h1 class="anima-t">Quem vai te mostrar o PerFisio é a <em>Mari</em> — fisioterapeuta, como você.</h1>
+      <p class="lead">São 30 minutos por vídeo, sem compromisso. Ela abre o sistema com o <b>seu</b> caso na
+        frente: a sua semana de atendimentos, os seus pacotes, o seu jeito de registrar evolução. E responde
+        o que você quiser — inclusive preço.</p>
+      <div class="acoes">
+        <a class="btn btn-primary" href="#agendar">Escolher um horário</a>
+        <a class="btn btn-ghost" href="/site-para-fisioterapeutas">Prefiro ver sozinho primeiro</a>
+      </div>
+      <div class="selos">
+        <span class="selo"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#relogio"></use></svg> 30 minutos</span>
+        <span class="selo"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#camera"></use></svg> por vídeo, de onde você estiver</span>
+        <span class="selo"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#cartao"></use></svg> sem cartão, sem compromisso</span>
+      </div>
+    </div>
+    <div class="mari-midia" id="midia"></div>
+  </section>
+
+  <section class="sec">
+    <h2 class="anima-t">Conversa de <em>fisio para fisio</em></h2>
+    <p class="sub">Não é demonstração de vendedor com roteiro pronto. É uma colega abrindo a tela e mostrando
+      como ela resolveria a bagunça que você conhece bem.</p>
+    <div class="cards3">
+      <div class="card-m" data-sobe>
+        <div class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estetoscopio"></use></svg></div>
+        <h3>Ela conhece a rotina</h3>
+        <p>O encaixe de última hora, a evolução que ficou para depois e nunca voltou, o pacote que ninguém
+          sabe quantas sessões ainda tem. A conversa começa daí, não de um slide.</p>
+      </div>
+      <div class="card-m" data-sobe>
+        <div class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg></div>
+        <h3>Com o seu consultório na tela</h3>
+        <p>Leve a sua semana e os seus valores. A Mari monta na hora: agenda, pacotes, prontuário em SOAP e o
+          perfil público que traz paciente da sua região.</p>
+      </div>
+      <div class="card-m" data-sobe>
+        <div class="ico"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#coracao"></use></svg></div>
+        <h3>Sem empurrar plano</h3>
+        <p>Se não fizer sentido para o seu momento, ela diz. Dá para usar de graça até 10 consultas por mês —
+          e o sistema completo custa R$ 40 por fisioterapeuta, sem fidelidade.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2 class="anima-t">Como são os <em>30 minutos</em></h2>
+    <div class="roteiro">
+      <div class="passo" data-sobe>
+        <div class="min">0 a 5 min</div>
+        <h3>Como você atende hoje</h3>
+        <p>Quantos pacientes por semana, onde você anota a evolução, como cobra pacote e por onde chega
+          paciente novo.</p>
+      </div>
+      <div class="passo" data-sobe>
+        <div class="min">5 a 20 min</div>
+        <h3>O sistema com o seu caso</h3>
+        <p>Agenda, prontuário, financeiro e perfil público — montados com os seus números, não com dados
+          de exemplo.</p>
+      </div>
+      <div class="passo" data-sobe>
+        <div class="min">20 a 30 min</div>
+        <h3>Preço, migração e dúvidas</h3>
+        <p>Quanto fica no seu caso, como trazer a sua lista de pacientes e o que acontece se você quiser
+          parar no meio do caminho.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="agenda-sec" id="agendar">
+    <h2 class="anima-t" style="font-size:clamp(1.45rem,3vw,2rem);font-weight:900;color:var(--ink);letter-spacing:-.8px;text-align:center;line-height:1.2;">
+      Escolha um horário na <em style="color:var(--primary);font-style:normal;">agenda da Mari</em></h2>
+    <p style="color:var(--text-soft);text-align:center;margin:14px auto 34px;font-size:.98rem;max-width:620px;line-height:1.75;">
+      Horário de Brasília. Depois de escolher, você recebe a confirmação por e-mail e o link da chamada
+      chega antes da conversa.</p>
+
+    <div class="agenda-caixa">
+      <div class="agenda-lado">
+        <div class="av" id="avMari">M</div>
+        <h3 id="nomeMari">Mari</h3>
+        <div class="papel">Fisioterapeuta · apresenta o PerFisio</div>
+        <div class="meta">
+          <div><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#relogio"></use></svg> 30 minutos</div>
+          <div><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#camera"></use></svg> Chamada de vídeo (o link vem por e-mail)</div>
+          <div><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg> Segunda a sexta, manhã e tarde</div>
+          <div><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#escudo"></use></svg> Sem cartão e sem compromisso</div>
+        </div>
+        <div class="nota">Não achou um horário bom? Marque o mais próximo e responda o e-mail da
+          confirmação dizendo quando fica melhor para você.</div>
+      </div>
+      <div class="agenda-painel" id="painel">
+        <div style="padding:40px 10px;text-align:center;color:var(--text-soft);font-size:.9rem;">Carregando a agenda...</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2 class="anima-t">O que os colegas <em>costumam perguntar</em></h2>
+    <div class="perguntas">
+      <details>
+        <summary>Preciso levar alguma coisa preparada?</summary>
+        <p>Só a sua semana na cabeça: mais ou menos quantos atendimentos você faz, quanto cobra a sessão e o
+          pacote, e onde anota a evolução hoje. Com isso dá para montar o seu cenário real na tela.</p>
+      </details>
+      <details>
+        <summary>Atendo sozinho, em consultório pequeno. Serve para mim?</summary>
+        <p>Serve — a maior parte de quem usa o PerFisio atende sozinho ou com uma recepção. Dá para usar de
+          graça até 10 consultas por mês, sem prazo e sem cartão, e o perfil público continua seu de qualquer forma.</p>
+      </details>
+      <details>
+        <summary>Dá para trazer meus pacientes que já estão em outro lugar?</summary>
+        <p>Dá. Na conversa a Mari mostra como fica a ficha do paciente, o histórico de evoluções e os créditos
+          de pacote, e combina com você o jeito mais rápido de passar a sua lista para dentro do sistema.</p>
+      </details>
+      <details>
+        <summary>E o prontuário, fica seguro?</summary>
+        <p>O prontuário é eletrônico, com evolução em SOAP, fotos e anexos, e cada clínica só enxerga os
+          próprios pacientes. A conversa é um bom momento para perguntar o que quiser sobre isso.</p>
+      </details>
+      <details>
+        <summary>Vou sair de lá com um contrato para assinar?</summary>
+        <p>Não. A conversa termina com você sabendo quanto custa no seu caso e decidindo no seu tempo —
+          inclusive decidindo que não é agora.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="fecho">
+    <h2 class="anima-t">Trinta minutos agora, ou mais um mês <em style="color:var(--accent);font-style:normal;">com a agenda no caderno</em></h2>
+    <p>Se preferir ver sozinho antes, o perfil é grátis e fica pronto em poucos minutos. A conversa com a
+      Mari continua aqui quando você quiser.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <a class="btn btn-primary" href="#agendar">Escolher um horário</a>
+      <a class="btn btn-ghost" href="/cadastro" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.3);">Criar meu perfil grátis</a>
+    </div>
+  </section>
+
+  <footer class="lp-footer">
+    <b style="color:var(--ink);">PerFisio</b> © 2026 — Conectando pacientes e fisioterapeutas ·
+    <a href="/">Início</a> · <a href="/site-para-fisioterapeutas">Para fisioterapeutas</a> ·
+    <a href="/planos.html">Planos</a> · <a href="/loja">Loja</a> · <a href="/blog">Blog</a>
+  </footer>
+
+  <script src="/assets/js/app.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script>
+    const DADOS = window.__PF || {};
+    const MARI = Object.assign({ nome: 'Mari', duracao: 30, whatsapp: '' }, DADOS.mari || {});
+    const MIDIA = DADOS.midia || {};
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const ICO = n => `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#${n}"></use></svg>`;
+
+    /* ================= vídeo, retrato ou cartão com a fala dela ================= */
+    (function midia() {
+      const box = document.getElementById('midia');
+      if (MIDIA.video) {
+        box.innerHTML = `<video controls preload="metadata" playsinline ${MIDIA.poster ? `poster="${esc(MIDIA.poster)}"` : ''}>
+            <source src="/${esc(MIDIA.video)}" type="video/${MIDIA.video.endsWith('webm') ? 'webm' : 'mp4'}">
+          </video>`;
+        return;
+      }
+      if (MIDIA.youtube) {
+        // só carrega o player (e os cookies do YouTube) depois do clique
+        box.innerHTML = `
+          <img src="https://i.ytimg.com/vi/${esc(MIDIA.youtube)}/hqdefault.jpg" alt="Vídeo da ${esc(MARI.nome)}">
+          <button class="mari-play" type="button" aria-label="Assistir ao vídeo"><span>${ICO('abrir')}</span></button>`;
+        box.querySelector('.mari-play').addEventListener('click', () => {
+          box.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${esc(MIDIA.youtube)}?autoplay=1&rel=0"
+            title="Vídeo da ${esc(MARI.nome)}" allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+        });
+        return;
+      }
+      /* Sem vídeo e sem foto, o lugar é da apresentação da conversa — na voz do
+         PerFisio. A frase da própria Mari entra pela env MARI_FRASE, e aí vira
+         citação de verdade (com aspas e assinatura). */
+      box.classList.add('mari-cartao');
+      box.innerHTML = `
+        <div>
+          ${MARI.frase
+            ? `<div class="aspas">&ldquo;</div><blockquote>${esc(MARI.frase)}</blockquote>`
+            : `<blockquote>Trinta minutos, uma tela compartilhada e as suas perguntas —
+                 do jeito que você explicaria para uma colega de consultório.</blockquote>
+               <p style="color:#9FB4B1;font-size:.92rem;line-height:1.7;margin-top:16px;">
+                 Sem apresentação pronta, sem gravação genérica: a conversa vai para onde a sua
+                 dúvida levar.</p>`}
+        </div>
+        <div class="quem">
+          <span class="av">${MIDIA.foto ? `<img src="/${esc(MIDIA.foto)}" alt="${esc(MARI.nome)}">` : esc(MARI.nome[0] || 'M')}</span>
+          <span><b>${esc(MARI.nome)}</b><span>Fisioterapeuta · quem conduz a conversa</span></span>
+        </div>`;
+    })();
+
+    if (MIDIA.foto) {
+      const av = document.getElementById('avMari');
+      av.innerHTML = `<img src="/${esc(MIDIA.foto)}" alt="${esc(MARI.nome)}">`;
+    }
+    document.getElementById('nomeMari').textContent = MARI.nome;
+
+    /* ================= agenda ================= */
+    const DIAS_SEM = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+    const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const porExtenso = s => new Date(s + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    let AG = null, mesRef = new Date(), diaSel = null, horaSel = null, enviando = false;
+    const painel = document.getElementById('painel');
+
+    const ocupado = (data, hora) => AG.ocupados.some(o => o.data === data && o.hora === hora);
+    // o servidor manda até quando já passou (fuso de Brasília + antecedência mínima)
+    const cedoDemais = (data, hora) => `${data} ${hora}` < AG.agora;
+    const livresDe = data => AG.horas.filter(h => !ocupado(data, h) && !cedoDemais(data, h));
+    const limiteISO = () => iso(new Date(Date.now() + (AG.janela || 60) * 86400000));
+
+    async function carregar() {
+      try {
+        AG = await (await fetch('/api/public/mari/agenda')).json();
+      } catch (e) {
+        painel.innerHTML = `<div style="padding:40px 10px;text-align:center;color:var(--text-soft);font-size:.9rem;">
+          Não consegui carregar a agenda agora. Recarregue a página em instantes.</div>`;
+        return;
+      }
+      desenharAgenda();
+    }
+
+    function desenharAgenda() {
+      const ano = mesRef.getFullYear(), mes = mesRef.getMonth();
+      const primeiro = new Date(ano, mes, 1), total = new Date(ano, mes + 1, 0).getDate();
+      const agora = new Date();
+      const mesAtual = ano === agora.getFullYear() && mes === agora.getMonth();
+      const hoje = AG.agora.slice(0, 10);
+
+      let celulas = '';
+      for (let i = 0; i < primeiro.getDay(); i++) celulas += '<button class="vazio" disabled></button>';
+      for (let d = 1; d <= total; d++) {
+        const data = iso(new Date(ano, mes, d));
+        const diaOk = AG.dias.includes(new Date(ano, mes, d).getDay());
+        const fora = data < hoje || data > limiteISO();
+        const sem = !fora && diaOk && livresDe(data).length === 0;
+        const bloqueado = fora || !diaOk || sem;
+        celulas += `<button ${bloqueado ? 'disabled' : ''} class="${data === diaSel ? 'sel' : ''}${data === hoje ? ' hoje' : ''}"
+          data-dia="${data}" title="${sem ? 'Sem horários livres' : ''}">${d}</button>`;
+      }
+
+      const livres = diaSel ? livresDe(diaSel) : [];
+      painel.innerHTML = `
+        <div class="agenda-grade">
+          <div>
+            <div class="cal-topo">
+              <div class="mes">${primeiro.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</div>
+              <div class="navs">
+                <button type="button" data-mes="-1" ${mesAtual ? 'disabled' : ''} aria-label="Mês anterior">‹</button>
+                <button type="button" data-mes="1" aria-label="Próximo mês">›</button>
+              </div>
+            </div>
+            <div class="semana">${DIAS_SEM.map(d => `<span>${d}</span>`).join('')}</div>
+            <div class="dias">${celulas}</div>
+          </div>
+          <div class="horarios">
+            ${diaSel
+              ? `<div class="tit">Horários<span>${porExtenso(diaSel)}</span></div>
+                 <div class="slots">${livres.length
+                   ? livres.map(h => `<button type="button" data-hora="${h}">${h}</button>`).join('')
+                   : '<div class="nenhum">Nenhum horário livre nesse dia. Escolha outro no calendário.</div>'}</div>`
+              : `<div class="tit">Escolha um dia<span>Os dias em verde têm horário livre</span></div>
+                 <div class="nenhum" style="font-size:.82rem;color:var(--text-soft);line-height:1.6;">
+                   A conversa dura ${MARI.duracao} minutos.</div>`}
+          </div>
+        </div>`;
+
+      painel.querySelectorAll('[data-dia]').forEach(b => b.addEventListener('click', () => {
+        diaSel = b.dataset.dia; horaSel = null; desenharAgenda();
+      }));
+      painel.querySelectorAll('[data-mes]').forEach(b => b.addEventListener('click', () => {
+        mesRef = new Date(mesRef.getFullYear(), mesRef.getMonth() + Number(b.dataset.mes), 1);
+        desenharAgenda();
+      }));
+      painel.querySelectorAll('[data-hora]').forEach(b => b.addEventListener('click', () => {
+        horaSel = b.dataset.hora; desenharFormulario();
+      }));
+    }
+
+    function desenharFormulario() {
+      painel.innerHTML = `
+        <div class="form-demo">
+          <div class="resumo">
+            ${ICO('agenda')} ${porExtenso(diaSel)}, ${horaSel} · ${MARI.duracao} min
+            <button type="button" id="trocar">trocar</button>
+          </div>
+          <div class="campos">
+            <div class="field full"><label>Seu nome *</label><input type="text" id="dNome" placeholder="Como a Mari deve te chamar"></div>
+            <div class="field"><label>E-mail *</label><input type="email" id="dEmail" placeholder="voce@email.com"></div>
+            <div class="field"><label>WhatsApp *</label><input type="tel" id="dZap" placeholder="(53) 99999-0000"></div>
+            <div class="field"><label>Cidade</label><input type="text" id="dCidade" placeholder="Pelotas/RS"></div>
+            <div class="field"><label>CREFITO</label><input type="text" id="dCrefito" placeholder="opcional"></div>
+            <div class="field full"><label>O que você mais quer ver?</label>
+              <select id="dInteresse">
+                <option value="">Pode ser uma visão geral</option>
+                <option>Agenda e agendamento online</option>
+                <option>Prontuário eletrônico e evoluções</option>
+                <option>Financeiro, pacotes e comissões</option>
+                <option>Perfil público e captação de pacientes</option>
+                <option>Migrar meus pacientes de outro sistema</option>
+              </select>
+            </div>
+            <div class="field full"><label>Quer adiantar alguma coisa? (opcional)</label>
+              <textarea id="dObs" rows="2" placeholder="Ex.: atendo domiciliar e divido a agenda com uma colega"></textarea></div>
+          </div>
+          <button class="btn btn-primary" type="button" id="dEnviar" style="width:100%;justify-content:center;padding:13px;margin-top:18px;">
+            Confirmar conversa com a ${esc(MARI.nome)}</button>
+          <div style="font-size:.76rem;color:var(--text-soft);text-align:center;margin-top:10px;line-height:1.6;">
+            Seus dados servem só para marcar e lembrar da conversa.</div>
+        </div>`;
+      document.getElementById('trocar').addEventListener('click', () => { horaSel = null; desenharAgenda(); });
+      document.getElementById('dEnviar').addEventListener('click', enviar);
+    }
+
+    async function enviar() {
+      if (enviando) return;
+      const btn = document.getElementById('dEnviar');
+      const v = id => (document.getElementById(id) || {}).value || '';
+      const corpo = {
+        nome: v('dNome').trim(), email: v('dEmail').trim(), whatsapp: v('dZap').trim(),
+        cidade: v('dCidade').trim(), crefito: v('dCrefito').trim(),
+        interesse: v('dInteresse'), obs: v('dObs').trim(),
+        data: diaSel, hora: horaSel, origem: location.pathname,
+      };
+      enviando = true; btn.disabled = true; btn.textContent = 'Marcando...';
+      try {
+        const r = await fetch('/api/public/mari/agendar', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.erro || 'Não consegui marcar agora');
+        desenharConfirmacao(d, corpo.nome);
+      } catch (e) {
+        App.toast(e.message, 'error');
+        enviando = false; btn.disabled = false; btn.textContent = `Confirmar conversa com a ${MARI.nome}`;
+      }
+    }
+
+    function desenharConfirmacao(d, nome) {
+      const zap = (MARI.whatsapp || '').replace(/\D/g, '');
+      painel.innerHTML = `
+        <div class="pronto">
+          <span class="marca">${ICO('confirmado')}</span>
+          <h3>Está marcado, ${esc(nome.split(' ')[0])}!</h3>
+          <p>${esc(d.quando)}, às <b>${esc(d.hora)}</b> (horário de Brasília). São ${d.duracao} minutos por
+            vídeo — o link chega no seu e-mail antes da conversa.</p>
+          <div class="codigo">${esc(d.codigo)}</div>
+          <div class="depois">
+            <button class="btn btn-soft" type="button" id="baixarIcs">${ICO('baixar')} Adicionar ao meu calendário</button>
+            ${zap ? `<a class="btn btn-ghost" href="https://wa.me/55${zap}" target="_blank" rel="noopener">${ICO('whatsapp')} Falar no WhatsApp</a>` : ''}
+          </div>
+          <p style="margin-top:20px;font-size:.84rem;color:var(--text-soft);">Quer ir adiantando?
+            <a href="/cadastro" style="color:var(--primary-dark);font-weight:700;">Crie seu perfil grátis</a>
+            e leve suas dúvidas prontas.</p>
+        </div>`;
+      document.getElementById('baixarIcs').addEventListener('click', () => baixarIcs(d, nome));
+    }
+
+    function baixarIcs(d, nome) {
+      const ics = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//PerFisio//Apresentacao//PT-BR', 'BEGIN:VEVENT',
+        `UID:${d.codigo}@perfisio.com.br`,
+        `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`,
+        `DTSTART:${d.inicio_utc}`, `DTEND:${d.fim_utc}`,
+        `SUMMARY:Apresentação do PerFisio com a ${MARI.nome}`,
+        `DESCRIPTION:Conversa de ${d.duracao} minutos por vídeo. O link chega por e-mail. Código ${d.codigo}.`,
+        'END:VEVENT', 'END:VCALENDAR',
+      ].join('\r\n');
+      const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = `perfisio-${d.codigo}.ics`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    carregar();
+
+    // o botão do topo e os CTAs rolam até a agenda
+    document.querySelectorAll('a[href="#agendar"]').forEach(a => a.addEventListener('click', e => {
+      e.preventDefault();
+      document.getElementById('agendar').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+  </script>
+
+  <!-- títulos animados: a página funciona inteira sem isso -->
+  <script>
+    (function animacoes() {
+      const parado = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (parado) { document.documentElement.classList.add('gsap-ok'); return; }
+
+      const carregar = src => new Promise((ok, erro) => {
+        const s = document.createElement('script');
+        s.src = src; s.async = true; s.onload = ok; s.onerror = erro;
+        document.head.appendChild(s);
+      });
+
+      /* cada palavra vira <span class="pal"><span class="in">palavra</span></span>,
+         preservando o <em> e os outros destaques do título */
+      function dividir(el) {
+        const palavras = [];
+        const visitar = no => {
+          [...no.childNodes].forEach(filho => {
+            if (filho.nodeType === 3) {
+              const partes = filho.textContent.split(/(\s+)/);
+              const frag = document.createDocumentFragment();
+              partes.forEach(p => {
+                if (!p.trim()) { frag.appendChild(document.createTextNode(p)); return; }
+                const fora = document.createElement('span');
+                fora.className = 'pal';
+                const dentro = document.createElement('span');
+                dentro.className = 'in';
+                dentro.textContent = p;
+                fora.appendChild(dentro);
+                frag.appendChild(fora);
+                palavras.push(dentro);
+              });
+              filho.replaceWith(frag);
+            } else if (filho.nodeType === 1) visitar(filho);
+          });
+        };
+        visitar(el);
+        return palavras;
+      }
+
+      Promise.all([
+        carregar('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js'),
+        carregar('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js'),
+      ]).then(() => {
+        if (!window.gsap || !window.ScrollTrigger) return;
+        gsap.registerPlugin(ScrollTrigger);
+        const naHora = performance.now() < 700;   // a reserva do CSS ainda não revelou nada
+        document.documentElement.classList.add('gsap-ok');
+
+        document.querySelectorAll('.anima-t').forEach((titulo, i) => {
+          const primeiro = i === 0;
+          if (primeiro && !naHora) return;        // o CSS já mostrou: não dá para esconder de novo
+          const palavras = dividir(titulo);
+          gsap.fromTo(palavras,
+            { yPercent: 115, y: 0, opacity: 0 },
+            {
+              yPercent: 0, y: 0, opacity: 1, duration: .72, ease: 'power3.out', stagger: .045,
+              scrollTrigger: primeiro ? undefined : { trigger: titulo, start: 'top 85%', once: true },
+              delay: primeiro ? .05 : 0,
+            });
+        });
+
+        gsap.utils.toArray('[data-sobe]').forEach(el => {
+          gsap.fromTo(el, { y: 26, opacity: 0 }, {
+            y: 0, opacity: 1, duration: .6, ease: 'power2.out',
+            scrollTrigger: { trigger: el, start: 'top 88%', once: true },
+          });
+        });
+
+        const midia = document.getElementById('midia');
+        if (midia && naHora) gsap.fromTo(midia, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: .8, ease: 'power2.out', delay: .15 });
+      }).catch(() => { document.documentElement.classList.add('gsap-ok'); });
+    })();
+  </script>
+</body>
+</html>
