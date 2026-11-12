@@ -144,7 +144,10 @@
     }
 
     /* ================= AVALIAÇÕES ================= */
-    const estrelas = n => ''.slice(0, n) + ''.slice(0, 5 - n);
+    /* as estrelas vêm do sprite: cheias até a nota, apagadas no resto
+       (a conversão de emojis para ícones tinha deixado isto vazio) */
+    const estrelas = n => [1, 2, 3, 4, 5].map(i =>
+      `<svg class="i${i <= n ? '' : ' vazia'}" aria-hidden="true"><use href="/assets/img/icones.svg#estrela"></use></svg>`).join('');
     const ROTULO = { 5: 'Excelente', 4: 'Muito bom', 3: 'Bom', 2: 'Regular', 1: 'Ruim' };
     let MINHA = null, notaSel = 0;
 
