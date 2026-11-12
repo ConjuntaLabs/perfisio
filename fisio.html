@@ -19,6 +19,11 @@
     }
     .lp-header .logo { display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 1.1rem; color: var(--ink); }
     .lp-header .logo img { height: 30px; width: auto; display: block; }
+    /* no celular o logo ocupava quase metade da largura e espremia os botões */
+    @media (max-width: 760px) {
+      .lp-header { padding-inline: 5vw; gap: 10px; }
+      .lp-header .logo img { height: 22px; }
+    }
     .lp-header .logo .mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; display: grid; place-items: center; font-size: .95rem; }
     .lp-header nav { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: .88rem; font-weight: 600; color: var(--text-soft); }
 

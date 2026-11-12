@@ -18,6 +18,11 @@
       backdrop-filter: blur(8px); z-index: 50;
     }
     .lp-header .logo img { height: 30px; width: auto; display: block; }
+    /* no celular o logo ocupava quase metade da largura e espremia os botões */
+    @media (max-width: 760px) {
+      .lp-header { padding-inline: 5vw; gap: 10px; }
+      .lp-header .logo img { height: 22px; }
+    }
     .lp-header nav { margin-left: auto; display: flex; align-items: center; gap: 20px; font-size: .9rem; font-weight: 600; color: var(--text-soft); }
 
     .cid-hero { padding: 54px 6vw 34px; text-align: center; background: linear-gradient(180deg, #F0FAF7 0%, #fff 100%); }
