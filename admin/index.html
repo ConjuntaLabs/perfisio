@@ -765,6 +765,17 @@
           </label>
         </div>
 
+        <div style="display:flex;align-items:center;gap:10px;background:#F4FAF9;border:1px solid #DCEEEA;border-radius:10px;padding:12px 14px;margin-bottom:18px;">
+          <input type="checkbox" id="dcCursos" ${d.plano_cursos ? 'checked' : ''} style="width:18px;height:18px;">
+          <label for="dcCursos" style="margin:0;font-weight:600;color:var(--ink);font-size:.86rem;flex:1;">
+            <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ideia"></use></svg> Módulo de cursos contratado
+            <span style="display:block;font-weight:500;color:var(--text-soft);font-size:.76rem;">
+              Libera o menu Cursos e a venda de vagas no diretório.
+              ${d.assinante ? 'Esta clínica assina pela Stripe — o add-on lá dentro sobrescreve este campo.' : 'Use para liberar manualmente (cortesia) quem não assina pela Stripe.'}
+            </span>
+          </label>
+        </div>
+
         <h4 style="font-size:.85rem;color:var(--ink);margin-bottom:8px;"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#estetoscopio"></use></svg> Equipe (${d.fisios.filter(f => !f.excluido_em).length})</h4>
         ${d.fisios.map(f => f.excluido_em ? `
           <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #F0F4F3;font-size:.86rem;opacity:.6;">
@@ -806,6 +817,7 @@
           nome: dcNome.value.trim(), email: dcEmail.value.trim(), telefone: dcTel.value.trim(),
           cnpj: dcCnpj.value.trim(), endereco: dcEnd.value.trim(),
           plano_social: document.getElementById('dcSocial').checked,
+          plano_cursos: document.getElementById('dcCursos').checked,
         }});
         App.toast('Dados da clínica salvos!');
         App.closeModal('mDetalhe');

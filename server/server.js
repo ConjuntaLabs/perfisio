@@ -362,6 +362,57 @@ CREATE TABLE IF NOT EXISTS pedido_itens (
   preco numeric(10,2) NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS pedido_itens_idx ON pedido_itens (pedido_id);
+-- CURSOS: add-on contratado pela clínica (plano_cursos). O curso tem encontros,
+-- os alunos se inscrevem e pagam online, confirmam presença em cada encontro e
+-- a clínica faz a chamada do que aconteceu de verdade.
+ALTER TABLE clinicas ADD COLUMN IF NOT EXISTS plano_cursos boolean NOT NULL DEFAULT false;
+CREATE TABLE IF NOT EXISTS cursos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  fisio_id uuid REFERENCES fisios(id) ON DELETE SET NULL,
+  slug text UNIQUE,
+  titulo text NOT NULL,
+  resumo text, descricao text, publico text, carga_horaria text,
+  modalidade text NOT NULL DEFAULT 'presencial',
+  local text, cidade text, link_online text,
+  preco numeric(10,2) NOT NULL DEFAULT 0,
+  vagas int NOT NULL DEFAULT 0,                    -- 0 = sem limite
+  cor text NOT NULL DEFAULT '#0DA189',
+  icone text NOT NULL DEFAULT 'ideia',
+  publicado boolean NOT NULL DEFAULT false,
+  inscricoes_abertas boolean NOT NULL DEFAULT true,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS cursos_clinica_idx ON cursos (clinica_id, criado_em DESC);
+CREATE TABLE IF NOT EXISTS curso_encontros (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  curso_id uuid NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
+  titulo text, data date NOT NULL, inicio text, fim text,
+  ordem int NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS encontros_curso_idx ON curso_encontros (curso_id, data, ordem);
+CREATE TABLE IF NOT EXISTS inscricoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  curso_id uuid NOT NULL REFERENCES cursos(id) ON DELETE CASCADE,
+  conta_id uuid REFERENCES contas(id) ON DELETE SET NULL,
+  codigo text NOT NULL UNIQUE,
+  nome text NOT NULL, email text NOT NULL, telefone text, crefito text, obs text,
+  valor numeric(10,2) NOT NULL DEFAULT 0,
+  status text NOT NULL DEFAULT 'pendente',          -- pendente | confirmada | cancelada
+  pagamento text,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS inscricoes_curso_email_uniq
+  ON inscricoes (curso_id, lower(email)) WHERE status <> 'cancelada';
+CREATE TABLE IF NOT EXISTS presencas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  encontro_id uuid NOT NULL REFERENCES curso_encontros(id) ON DELETE CASCADE,
+  inscricao_id uuid NOT NULL REFERENCES inscricoes(id) ON DELETE CASCADE,
+  confirmada boolean,                               -- o aluno disse se vem (null = não respondeu)
+  presente boolean,                                 -- a chamada da clínica (null = não marcado)
+  atualizado_em timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (encontro_id, inscricao_id)
+);
 -- apresentações do PerFisio na agenda da Mari (página /fale-com-a-mari)
 CREATE TABLE IF NOT EXISTS demos (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -535,6 +586,11 @@ const PLANOS = {
     descricao: 'Posts prontos todo mês para o Instagram da clínica, com aprovação pelo sistema.',
     centavos: 14900, unidade: 'por clínica/mês', tipo: 'clinica',
   },
+  cursos: {
+    lookup: 'perfisio_cursos_mensal', nome: 'Cursos',
+    descricao: 'Crie cursos e workshops, venda as vagas online, faça a chamada e acompanhe a presença.',
+    centavos: 9900, unidade: 'por clínica/mês', tipo: 'clinica',
+  },
 };
 const LIMITE_GRATIS = 10; // consultas/mês do plano "fisioterapeuta local"
 
@@ -564,14 +620,15 @@ async function sincronizarAssinatura(sub) {
   const lookupDe = it => it.price?.lookup_key || '';
   const itemFisio = itens.find(it => lookupDe(it) === PLANOS.fisio.lookup);
   const temSocial = itens.some(it => lookupDe(it) === PLANOS.social.lookup);
+  const temCursos = itens.some(it => lookupDe(it) === PLANOS.cursos.lookup);
   const ativa = ['active', 'trialing', 'past_due'].includes(sub.status);
   const fim = sub.items?.data?.[0]?.current_period_end || sub.current_period_end;
   await pool.query(`UPDATE clinicas SET stripe_customer_id=$2, stripe_subscription_id=$3, assinatura_status=$4,
-      licencas=$5, plano_social=$6, assinatura_fim=$7 WHERE id=$1`,
+      licencas=$5, plano_social=$6, assinatura_fim=$7, plano_cursos=$8 WHERE id=$1`,
     [cid, typeof sub.customer === 'string' ? sub.customer : sub.customer?.id,
      ativa ? sub.id : null, ativa ? sub.status : 'cancelado',
      ativa && itemFisio ? (itemFisio.quantity || 0) : 0,
-     ativa && temSocial, fim ? new Date(fim * 1000) : null]);
+     ativa && temSocial, fim ? new Date(fim * 1000) : null, ativa && temCursos]);
 }
 
 /* ============ APP ============ */
@@ -617,6 +674,16 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async
         sub.metadata = { clinica_id: o.metadata.clinica_id };
       }
       await sincronizarAssinatura(sub);
+    } else if (evento.type === 'checkout.session.completed' && o.payment_status === 'paid') {
+      // pagamentos avulsos: inscrição em curso e pedido da loja
+      if (o.metadata?.inscricao) {
+        await pool.query(
+          `UPDATE inscricoes SET status='confirmada', pagamento=$2 WHERE upper(codigo)=upper($1)`,
+          [o.metadata.inscricao, 'stripe:' + o.id]);
+      }
+      if (o.metadata?.pedido) {
+        await pool.query(`UPDATE pedidos SET status='pago' WHERE upper(codigo)=upper($1)`, [o.metadata.pedido]);
+      }
     } else if (evento.type.startsWith('customer.subscription.')) {
       await sincronizarAssinatura(o);
     }
@@ -2199,8 +2266,8 @@ app.get('/api/public/planos', (req, res) => {
 });
 
 async function contexto(cid) {
-  const c = (await pool.query(`SELECT nome, email, assinatura_status, licencas, plano_social, assinatura_fim,
-      stripe_customer_id, stripe_subscription_id FROM clinicas WHERE id=$1`, [cid])).rows[0];
+  const c = (await pool.query(`SELECT nome, email, assinatura_status, licencas, plano_social, plano_cursos,
+      assinatura_fim, stripe_customer_id, stripe_subscription_id FROM clinicas WHERE id=$1`, [cid])).rows[0];
   const fisios = (await pool.query('SELECT count(*)::int n FROM fisios WHERE clinica_id=$1 AND ativo', [cid])).rows[0].n;
   const consultas = (await pool.query(`SELECT count(*)::int n FROM sessoes WHERE clinica_id=$1
       AND date_trunc('month', data) = date_trunc('month', CURRENT_DATE) AND status <> 'cancelada'`, [cid])).rows[0].n;
@@ -2212,10 +2279,12 @@ app.get('/api/billing', auth, async (req, res) => {
   res.json({
     pagamento: !!stripe, limite_gratis: LIMITE_GRATIS, planos: catalogo(),
     nome: c.nome, status: c.assinatura_status, licencas: c.licencas, plano_social: c.plano_social,
+    plano_cursos: c.plano_cursos,
     assinatura_fim: c.assinatura_fim, assinante: !!c.stripe_subscription_id,
     fisios_ativos: c.fisios_ativos, consultas_mes: c.consultas_mes,
     mensal: c.stripe_subscription_id
-      ? (c.licencas * PLANOS.fisio.centavos + (c.plano_social ? PLANOS.social.centavos : 0)) / 100 : 0,
+      ? (c.licencas * PLANOS.fisio.centavos + (c.plano_social ? PLANOS.social.centavos : 0)
+         + (c.plano_cursos ? PLANOS.cursos.centavos : 0)) / 100 : 0,
   });
 });
 
@@ -2316,6 +2385,28 @@ app.post('/api/billing/social', auth, async (req, res) => {
     });
     await sincronizarAssinatura(novo);
     res.json({ ok: true, plano_social: ligar });
+  } catch (e) { console.error(e); res.status(500).json({ erro: e.message }); }
+});
+
+app.post('/api/billing/cursos', auth, async (req, res) => {
+  if (!stripe) return res.status(503).json({ erro: 'Pagamento ainda não está configurado no servidor' });
+  const u = await gestor(req, res); if (!u) return;
+  try {
+    const ligar = req.body?.ativo !== false;
+    const c = await contexto(req.auth.cid);
+    if (!c.stripe_subscription_id) return res.status(400).json({ erro: 'Assine o PerFisio antes de contratar o add-on' });
+    const sub = await stripe.subscriptions.retrieve(c.stripe_subscription_id);
+    const item = sub.items.data.find(i => i.price.lookup_key === PLANOS.cursos.lookup);
+    if (ligar && item) return res.json({ ok: true, plano_cursos: true });
+    if (!ligar && !item) return res.json({ ok: true, plano_cursos: false });
+    const novo = await stripe.subscriptions.update(sub.id, {
+      items: ligar
+        ? [{ price: await precoStripe('cursos'), quantity: 1 }]
+        : [{ id: item.id, deleted: true }],
+      proration_behavior: 'create_prorations',
+    });
+    await sincronizarAssinatura(novo);
+    res.json({ ok: true, plano_cursos: ligar });
   } catch (e) { console.error(e); res.status(500).json({ erro: e.message }); }
 });
 
@@ -2785,6 +2876,385 @@ app.put('/api/admin/pedidos/:id', superauth, async (req, res) => {
   res.json(p);
 });
 
+/* ============ CURSOS ============
+   Add-on da clínica (clinicas.plano_cursos): ela cria o curso com os encontros,
+   publica no diretório, vende online e faz a chamada. O aluno se inscreve, paga
+   (Stripe quando configurado) e confirma presença em cada encontro pelo código
+   da inscrição — sem precisar de senha. */
+const CURSO_COLS = `c.id, c.clinica_id, c.fisio_id, c.slug, c.titulo, c.resumo, c.descricao, c.publico,
+  c.carga_horaria, c.modalidade, c.local, c.cidade, c.link_online, c.preco::float8 AS preco, c.vagas,
+  c.cor, c.icone, c.publicado, c.inscricoes_abertas, c.criado_em`;
+const CURSO_PUBLICO = `c.publicado AND cl.ativa AND cl.excluida_em IS NULL AND cl.plano_cursos`;
+const ENCONTRO_JSON = `coalesce((
+  SELECT json_agg(json_build_object('id', e.id, 'titulo', e.titulo, 'data', to_char(e.data, 'YYYY-MM-DD'),
+                                    'inicio', e.inicio, 'fim', e.fim, 'ordem', e.ordem)
+                  ORDER BY e.data, e.ordem)
+  FROM curso_encontros e WHERE e.curso_id = c.id), '[]')`;
+// vagas já tomadas: tudo que não foi cancelado
+const OCUPADAS = `(SELECT count(*)::int FROM inscricoes i WHERE i.curso_id = c.id AND i.status <> 'cancelada')`;
+
+async function clinicaDeCursos(req, res) {
+  const r = await pool.query('SELECT id, nome, plano_cursos FROM clinicas WHERE id = $1', [req.auth.cid]);
+  if (!r.rowCount) { res.status(404).json({ erro: 'Clínica não encontrada' }); return null; }
+  if (!r.rows[0].plano_cursos) {
+    res.status(403).json({
+      erro: 'O módulo de cursos não está no plano desta clínica. Ative em Assinatura.',
+      codigo: 'sem_plano_cursos',
+    });
+    return null;
+  }
+  return r.rows[0];
+}
+
+async function slugDeCurso(titulo) {
+  let base = slugificar(titulo).slice(0, 70) || 'curso';
+  const dup = await pool.query('SELECT 1 FROM cursos WHERE slug = $1', [base]);
+  return dup.rowCount ? `${base}-${Date.now().toString(36).slice(-4)}` : base;
+}
+
+const CAMPOS_CURSO = ['titulo', 'resumo', 'descricao', 'publico', 'carga_horaria', 'modalidade', 'local',
+  'cidade', 'link_online', 'preco', 'vagas', 'cor', 'icone', 'publicado', 'inscricoes_abertas', 'fisio_id'];
+
+/* ---- painel da clínica ---- */
+app.get('/api/cursos', auth, async (req, res) => {
+  const clinica = await clinicaDeCursos(req, res); if (!clinica) return;
+  const r = await pool.query(`
+    SELECT ${CURSO_COLS}, f.nome AS fisio_nome, ${ENCONTRO_JSON} AS encontros,
+           ${OCUPADAS} AS inscritos,
+           (SELECT count(*)::int FROM inscricoes i WHERE i.curso_id = c.id AND i.status = 'confirmada') AS confirmados,
+           (SELECT coalesce(sum(i.valor), 0)::float8 FROM inscricoes i WHERE i.curso_id = c.id AND i.status = 'confirmada') AS receita
+    FROM cursos c LEFT JOIN fisios f ON f.id = c.fisio_id
+    WHERE c.clinica_id = $1 ORDER BY c.criado_em DESC`, [req.auth.cid]);
+  res.json({ clinica: { nome: clinica.nome }, cursos: r.rows });
+});
+
+app.post('/api/cursos', auth, async (req, res) => {
+  if (!await clinicaDeCursos(req, res)) return;
+  const b = req.body || {};
+  const titulo = String(b.titulo || '').trim();
+  if (titulo.length < 4) return res.status(400).json({ erro: 'Dê um título ao curso' });
+  const r = await pool.query(`
+    INSERT INTO cursos (clinica_id, fisio_id, slug, titulo, resumo, descricao, publico, carga_horaria,
+      modalidade, local, cidade, link_online, preco, vagas, cor, icone, publicado, inscricoes_abertas)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+    RETURNING id, slug`,
+    [req.auth.cid, b.fisio_id || null, await slugDeCurso(titulo), titulo, b.resumo || null, b.descricao || null,
+      b.publico || null, b.carga_horaria || null, b.modalidade === 'online' ? 'online' : 'presencial',
+      b.local || null, normalizarCidadeOpcional(b.cidade), b.link_online || null,
+      Number(b.preco) || 0, parseInt(b.vagas, 10) || 0, b.cor || '#0DA189', b.icone || 'ideia',
+      !!b.publicado, b.inscricoes_abertas !== false]);
+  await salvarEncontros(r.rows[0].id, b.encontros);
+  res.status(201).json(r.rows[0]);
+});
+
+app.put('/api/cursos/:id', auth, async (req, res) => {
+  if (!await clinicaDeCursos(req, res)) return;
+  const b = req.body || {};
+  const sets = []; const vals = [req.params.id, req.auth.cid];
+  for (const campo of CAMPOS_CURSO) {
+    if (!(campo in b)) continue;
+    let v = b[campo];
+    if (campo === 'preco') v = Number(v) || 0;
+    if (campo === 'vagas') v = parseInt(v, 10) || 0;
+    if (campo === 'publicado' || campo === 'inscricoes_abertas') v = !!v;
+    if (campo === 'modalidade') v = v === 'online' ? 'online' : 'presencial';
+    if (campo === 'cidade') v = normalizarCidadeOpcional(v);
+    if (campo === 'fisio_id') v = v || null;
+    vals.push(v); sets.push(`${campo}=$${vals.length}`);
+  }
+  if (!sets.length && !Array.isArray(b.encontros)) return res.status(400).json({ erro: 'Nada para alterar' });
+  if (sets.length) {
+    const r = await pool.query(`UPDATE cursos SET ${sets.join(', ')} WHERE id=$1 AND clinica_id=$2 RETURNING id`, vals);
+    if (!r.rowCount) return res.status(404).json({ erro: 'Curso não encontrado' });
+  }
+  if (Array.isArray(b.encontros)) await salvarEncontros(req.params.id, b.encontros, req.auth.cid);
+  res.json({ ok: true });
+});
+
+app.delete('/api/cursos/:id', auth, async (req, res) => {
+  if (!await clinicaDeCursos(req, res)) return;
+  const inscritos = await pool.query(
+    `SELECT count(*)::int AS n FROM inscricoes WHERE curso_id=$1 AND status <> 'cancelada'`, [req.params.id]);
+  if (inscritos.rows[0].n) {
+    return res.status(409).json({
+      erro: `Este curso já tem ${inscritos.rows[0].n} inscrito(s). Despublique em vez de excluir.`,
+    });
+  }
+  const r = await pool.query('DELETE FROM cursos WHERE id=$1 AND clinica_id=$2', [req.params.id, req.auth.cid]);
+  res.json({ removidos: r.rowCount });
+});
+
+// a lista de encontros é substituída inteira: é como a tela edita
+async function salvarEncontros(cursoId, encontros, cid) {
+  if (!Array.isArray(encontros)) return;
+  if (cid) {
+    const dono = await pool.query('SELECT 1 FROM cursos WHERE id=$1 AND clinica_id=$2', [cursoId, cid]);
+    if (!dono.rowCount) throw erroHttp(404, 'Curso não encontrado');
+  }
+  const validos = encontros
+    .filter(e => e && /^\d{4}-\d{2}-\d{2}$/.test(String(e.data || '')))
+    .slice(0, 60);
+  const cliente = await pool.connect();
+  try {
+    await cliente.query('BEGIN');
+    // mantém as presenças dos encontros que continuam na lista
+    const ids = validos.map(e => e.id).filter(Boolean);
+    await cliente.query(
+      `DELETE FROM curso_encontros WHERE curso_id=$1 ${ids.length ? 'AND NOT (id = ANY($2::uuid[]))' : ''}`,
+      ids.length ? [cursoId, ids] : [cursoId]);
+    for (const [i, e] of validos.entries()) {
+      if (e.id) {
+        await cliente.query(
+          `UPDATE curso_encontros SET titulo=$2, data=$3, inicio=$4, fim=$5, ordem=$6 WHERE id=$1 AND curso_id=$7`,
+          [e.id, e.titulo || null, e.data, e.inicio || null, e.fim || null, i + 1, cursoId]);
+      } else {
+        await cliente.query(
+          `INSERT INTO curso_encontros (curso_id, titulo, data, inicio, fim, ordem) VALUES ($1,$2,$3,$4,$5,$6)`,
+          [cursoId, e.titulo || null, e.data, e.inicio || null, e.fim || null, i + 1]);
+      }
+    }
+    await cliente.query('COMMIT');
+  } catch (e) {
+    await cliente.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally { cliente.release(); }
+}
+
+// cidade é opcional no curso (online não tem), então não pode derrubar o cadastro
+function normalizarCidadeOpcional(bruto) {
+  const texto = String(bruto || '').trim();
+  if (!texto) return null;
+  try { return normalizarCidade(texto); } catch (e) { return texto; }
+}
+
+app.get('/api/cursos/:id/inscricoes', auth, async (req, res) => {
+  if (!await clinicaDeCursos(req, res)) return;
+  const curso = await pool.query(
+    `SELECT c.id, c.titulo, ${ENCONTRO_JSON} AS encontros FROM cursos c WHERE c.id=$1 AND c.clinica_id=$2`,
+    [req.params.id, req.auth.cid]);
+  if (!curso.rowCount) return res.status(404).json({ erro: 'Curso não encontrado' });
+  const inscritos = await pool.query(`
+    SELECT i.id, i.codigo, i.nome, i.email, i.telefone, i.crefito, i.obs, i.status,
+           i.valor::float8 AS valor, i.pagamento, i.criado_em,
+           coalesce((SELECT json_agg(json_build_object('encontro_id', p.encontro_id,
+                                                       'confirmada', p.confirmada, 'presente', p.presente))
+                     FROM presencas p WHERE p.inscricao_id = i.id), '[]') AS presencas
+    FROM inscricoes i WHERE i.curso_id = $1 ORDER BY i.criado_em`, [req.params.id]);
+  res.json({ curso: curso.rows[0], inscricoes: inscritos.rows });
+});
+
+const STATUS_INSCRICAO = ['pendente', 'confirmada', 'cancelada'];
+app.put('/api/inscricoes/:id', auth, async (req, res) => {
+  if (!await clinicaDeCursos(req, res)) return;
+  const status = String((req.body || {}).status || '');
+  if (!STATUS_INSCRICAO.includes(status)) return res.status(400).json({ erro: 'Status inválido' });
+  const r = await pool.query(`
+    UPDATE inscricoes i SET status=$3, pagamento = CASE WHEN $3 = 'confirmada' AND i.pagamento IS NULL
+      THEN 'confirmado pela clínica' ELSE i.pagamento END
+    FROM cursos c WHERE i.id=$1 AND c.id = i.curso_id AND c.clinica_id=$2
+    RETURNING i.codigo, i.status`, [req.params.id, req.auth.cid, status]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Inscrição não encontrada' });
+  res.json(r.rows[0]);
+});
+
+// chamada do encontro: a clínica marca quem veio
+app.post('/api/encontros/:id/chamada', auth, async (req, res) => {
+  if (!await clinicaDeCursos(req, res)) return;
+  const dono = await pool.query(`
+    SELECT e.id FROM curso_encontros e JOIN cursos c ON c.id = e.curso_id
+    WHERE e.id=$1 AND c.clinica_id=$2`, [req.params.id, req.auth.cid]);
+  if (!dono.rowCount) return res.status(404).json({ erro: 'Encontro não encontrado' });
+  const lista = Array.isArray((req.body || {}).presencas) ? req.body.presencas : [];
+  for (const p of lista) {
+    if (!p || !UUID.test(String(p.inscricao_id || ''))) continue;
+    await pool.query(`
+      INSERT INTO presencas (encontro_id, inscricao_id, presente, atualizado_em)
+      VALUES ($1,$2,$3, now())
+      ON CONFLICT (encontro_id, inscricao_id)
+      DO UPDATE SET presente = EXCLUDED.presente, atualizado_em = now()`,
+      [req.params.id, p.inscricao_id, p.presente === null ? null : !!p.presente]);
+  }
+  res.json({ ok: true, marcados: lista.length });
+});
+
+/* ---- diretório público de cursos ---- */
+app.get('/api/public/cursos', async (req, res) => {
+  const where = [CURSO_PUBLICO]; const vals = [];
+  if (req.query.cidade) {
+    // o filtro chega como slug (sao-paulo-sp): acha a cidade real antes de comparar
+    const todas = await pool.query(`SELECT DISTINCT c.cidade FROM cursos c JOIN clinicas cl ON cl.id = c.clinica_id
+                                    WHERE ${CURSO_PUBLICO} AND coalesce(c.cidade, '') <> ''`);
+    const alvo = todas.rows.map(x => x.cidade).find(x => slugificar(x) === slugificar(req.query.cidade));
+    vals.push(alvo || '\u0000'); where.push(`c.cidade = $${vals.length}`);
+  }
+  if (req.query.modalidade) { vals.push(String(req.query.modalidade)); where.push(`c.modalidade = $${vals.length}`); }
+  if (req.query.q) {
+    vals.push('%' + String(req.query.q).trim() + '%');
+    where.push(`(c.titulo ILIKE $${vals.length} OR c.resumo ILIKE $${vals.length} OR c.publico ILIKE $${vals.length})`);
+  }
+  const r = await pool.query(`
+    SELECT ${CURSO_COLS}, cl.nome AS clinica_nome, cl.slug AS clinica_slug, f.nome AS fisio_nome,
+           ${ENCONTRO_JSON} AS encontros, ${OCUPADAS} AS inscritos
+    FROM cursos c JOIN clinicas cl ON cl.id = c.clinica_id LEFT JOIN fisios f ON f.id = c.fisio_id
+    WHERE ${where.join(' AND ')}
+    ORDER BY (SELECT min(e.data) FROM curso_encontros e WHERE e.curso_id = c.id) NULLS LAST, c.criado_em DESC
+    LIMIT 100`, vals);
+  const cidades = await pool.query(`
+    SELECT c.cidade, count(*)::int AS n FROM cursos c JOIN clinicas cl ON cl.id = c.clinica_id
+    WHERE ${CURSO_PUBLICO} AND coalesce(c.cidade, '') <> '' GROUP BY c.cidade ORDER BY n DESC, c.cidade`);
+  res.json({ cursos: r.rows, cidades: cidades.rows });
+});
+
+app.get('/api/public/cursos/:slug', async (req, res) => {
+  const r = await pool.query(`
+    SELECT ${CURSO_COLS}, cl.nome AS clinica_nome, cl.slug AS clinica_slug, cl.telefone AS clinica_telefone,
+           f.nome AS fisio_nome, f.slug AS fisio_slug, f.esp AS fisio_esp, (f.foto IS NOT NULL) AS fisio_tem_foto,
+           f.id AS fisio_id, ${ENCONTRO_JSON} AS encontros, ${OCUPADAS} AS inscritos
+    FROM cursos c JOIN clinicas cl ON cl.id = c.clinica_id LEFT JOIN fisios f ON f.id = c.fisio_id
+    WHERE c.slug = $1 AND ${CURSO_PUBLICO}`, [req.params.slug]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Curso não encontrado' });
+  const curso = r.rows[0];
+  curso.vagas_restantes = curso.vagas ? Math.max(curso.vagas - curso.inscritos, 0) : null;
+  res.json(curso);
+});
+
+/* o aluno pode estar logado na conta do PerFisio (paciente/aluno) ou não — se
+   estiver, a inscrição fica ligada à conta e aparece em "meus cursos" */
+// devolve só o id da conta do aluno (é o que o token guarda), ou null para visitante
+function contaDoAluno(req) {
+  const h = req.headers.authorization || '';
+  if (!h.startsWith('Bearer ')) return null;
+  try {
+    const p = jwt.verify(h.slice(7), JWT_SECRET);
+    return p.tipo === 'conta' && p.conta ? String(p.conta) : null;
+  } catch { return null; }
+}
+
+app.post('/api/public/cursos/:slug/inscrever', async (req, res) => {
+  const b = req.body || {};
+  const r = await pool.query(`
+    SELECT c.id, c.titulo, c.slug, c.clinica_id, c.preco::float8 AS preco, c.vagas, c.inscricoes_abertas,
+           c.modalidade, ${OCUPADAS} AS inscritos, cl.nome AS clinica_nome
+    FROM cursos c JOIN clinicas cl ON cl.id = c.clinica_id
+    WHERE c.slug = $1 AND ${CURSO_PUBLICO}`, [req.params.slug]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Curso não encontrado' });
+  const curso = r.rows[0];
+  if (!curso.inscricoes_abertas) return res.status(409).json({ erro: 'As inscrições deste curso estão fechadas' });
+  if (curso.vagas && curso.inscritos >= curso.vagas) return res.status(409).json({ erro: 'As vagas deste curso acabaram' });
+
+  const nome = String(b.nome || '').trim();
+  const email = String(b.email || '').trim().toLowerCase();
+  const telefone = String(b.telefone || '').trim();
+  if (nome.length < 3) return res.status(400).json({ erro: 'Informe seu nome completo' });
+  if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) return res.status(400).json({ erro: 'Informe um e-mail válido' });
+  if (!/^\d{10,13}$/.test(telefone.replace(/\D/g, ''))) return res.status(400).json({ erro: 'Informe um telefone com DDD' });
+
+  const jaTem = await pool.query(
+    `SELECT codigo, status FROM inscricoes WHERE curso_id=$1 AND lower(email)=$2 AND status <> 'cancelada'`,
+    [curso.id, email]);
+  if (jaTem.rowCount) {
+    return res.status(409).json({
+      erro: 'Este e-mail já está inscrito neste curso.',
+      codigo: jaTem.rows[0].codigo, inscricao: jaTem.rows[0].codigo,
+    });
+  }
+
+  const conta = contaDoAluno(req);
+  const gratis = !curso.preco;
+  let inscricao;
+  for (let i = 0; i < 5 && !inscricao; i++) {
+    const codigo = 'CUR-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+    const ins = await pool.query(`
+      INSERT INTO inscricoes (curso_id, conta_id, codigo, nome, email, telefone, crefito, obs, valor, status)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT (codigo) DO NOTHING
+      RETURNING id, codigo, status`,
+      [curso.id, conta, codigo, nome, email, telefone,
+        String(b.crefito || '').trim() || null, String(b.obs || '').trim() || null,
+        curso.preco, gratis ? 'confirmada' : 'pendente']);
+    if (ins.rowCount) inscricao = ins.rows[0];
+  }
+  if (!inscricao) return res.status(500).json({ erro: 'Não foi possível gerar o código da inscrição' });
+
+  await notificar({
+    cid: curso.clinica_id, tipo: 'info', titulo: `Inscrição no curso ${curso.titulo}`,
+    texto: `${nome}${gratis ? '' : ` · ${reaisBR(curso.preco)} a confirmar`}`,
+    link: `/app/cursos.html?curso=${curso.slug}`,
+  });
+
+  let checkout = null;
+  if (!gratis && stripe) {
+    try {
+      const sessao = await stripe.checkout.sessions.create({
+        mode: 'payment', customer_email: email,
+        line_items: [{
+          quantity: 1,
+          price_data: {
+            currency: 'brl', unit_amount: Math.round(curso.preco * 100),
+            product_data: { name: curso.titulo, description: `Inscrição · ${curso.clinica_nome}` },
+          },
+        }],
+        success_url: `https://${HOST_CANONICO}/inscricao/${inscricao.codigo}?pago=1`,
+        cancel_url: `https://${HOST_CANONICO}/curso/${curso.slug}`,
+        metadata: { inscricao: inscricao.codigo },
+      });
+      checkout = sessao.url;
+      await pool.query('UPDATE inscricoes SET pagamento=$2 WHERE id=$1', [inscricao.id, 'stripe:' + sessao.id]);
+    } catch (e) { console.error('checkout do curso falhou:', e.message); }
+  }
+
+  res.status(201).json({ codigo: inscricao.codigo, status: inscricao.status, valor: curso.preco, checkout });
+});
+
+// página do aluno: a inscrição é aberta pelo código, sem senha
+async function inscricaoPorCodigo(codigo) {
+  const r = await pool.query(`
+    SELECT i.id, i.codigo, i.nome, i.email, i.status, i.valor::float8 AS valor, i.criado_em,
+           c.titulo, c.slug, c.resumo, c.modalidade, c.local, c.cidade, c.link_online, c.cor, c.icone,
+           c.carga_horaria, cl.nome AS clinica_nome, f.nome AS fisio_nome, ${ENCONTRO_JSON} AS encontros,
+           coalesce((SELECT json_agg(json_build_object('encontro_id', p.encontro_id,
+                                                       'confirmada', p.confirmada, 'presente', p.presente))
+                     FROM presencas p WHERE p.inscricao_id = i.id), '[]') AS presencas
+    FROM inscricoes i JOIN cursos c ON c.id = i.curso_id JOIN clinicas cl ON cl.id = c.clinica_id
+    LEFT JOIN fisios f ON f.id = c.fisio_id
+    WHERE upper(i.codigo) = upper($1)`, [String(codigo || '').trim()]);
+  return r.rowCount ? r.rows[0] : null;
+}
+
+app.get('/api/public/inscricao/:codigo', async (req, res) => {
+  const i = await inscricaoPorCodigo(req.params.codigo);
+  if (!i) return res.status(404).json({ erro: 'Inscrição não encontrada' });
+  res.json(i);
+});
+
+app.post('/api/public/inscricao/:codigo/presenca', async (req, res) => {
+  const i = await inscricaoPorCodigo(req.params.codigo);
+  if (!i) return res.status(404).json({ erro: 'Inscrição não encontrada' });
+  if (i.status === 'cancelada') return res.status(409).json({ erro: 'Esta inscrição foi cancelada' });
+  const encontro = String((req.body || {}).encontro_id || '');
+  if (!UUID.test(encontro) || !i.encontros.some(e => e.id === encontro)) {
+    return res.status(400).json({ erro: 'Encontro inválido' });
+  }
+  const vai = (req.body || {}).vai;
+  await pool.query(`
+    INSERT INTO presencas (encontro_id, inscricao_id, confirmada, atualizado_em) VALUES ($1,$2,$3, now())
+    ON CONFLICT (encontro_id, inscricao_id)
+    DO UPDATE SET confirmada = EXCLUDED.confirmada, atualizado_em = now()`,
+    [encontro, i.id, vai === null ? null : !!vai]);
+  res.json({ ok: true, encontro_id: encontro, confirmada: vai === null ? null : !!vai });
+});
+
+// "meus cursos" de quem entra com a conta do PerFisio
+app.get('/api/conta/cursos', authConta, async (req, res) => {
+  const r = await pool.query(`
+    SELECT i.codigo, i.status, i.valor::float8 AS valor, i.criado_em,
+           c.titulo, c.slug, c.modalidade, c.cidade, c.cor, c.icone, cl.nome AS clinica_nome,
+           (SELECT min(e.data)::text FROM curso_encontros e WHERE e.curso_id = c.id) AS comeca
+    FROM inscricoes i JOIN cursos c ON c.id = i.curso_id JOIN clinicas cl ON cl.id = c.clinica_id
+    WHERE i.conta_id = $1 OR lower(i.email) = (SELECT lower(email) FROM contas WHERE id = $1)
+    ORDER BY i.criado_em DESC`, [req.conta]);
+  res.json(r.rows);
+});
+
 /* ============ APRESENTAÇÃO COM A MARI ============
    /fale-com-a-mari: o fisioterapeuta escolhe um horário na agenda da Mari e
    recebe uma conversa de 30 minutos por vídeo. Agenda própria e simples —
@@ -3120,7 +3590,7 @@ function superauth(req, res, next) {
 
 app.get('/api/admin/clinicas', superauth, async (req, res) => {
   const r = await pool.query(`
-    SELECT c.id, c.nome, c.email, c.endereco, c.ativa, c.plano_social, c.criado_em, c.excluida_em,
+    SELECT c.id, c.nome, c.email, c.endereco, c.ativa, c.plano_social, c.plano_cursos, c.criado_em, c.excluida_em,
       c.assinatura_status, c.licencas, (c.stripe_subscription_id IS NOT NULL) AS assinante,
       c.dominio, c.dominio_status,
       (c.perfil->>'visivel')::boolean AS visivel,
@@ -3184,7 +3654,7 @@ app.post('/api/admin/clinicas', superauth, async (req, res) => {
 
 // detalhe da clínica: dados + equipe + usuários
 app.get('/api/admin/clinicas/:id', superauth, async (req, res) => {
-  const c = await pool.query(`SELECT id, nome, cnpj, email, telefone, endereco, horario, ativa, plano_social, perfil,
+  const c = await pool.query(`SELECT id, nome, cnpj, email, telefone, endereco, horario, ativa, plano_social, plano_cursos, perfil,
     assinatura_status, licencas, assinatura_fim, (stripe_subscription_id IS NOT NULL) AS assinante,
     dominio, dominio_status, criado_em, excluida_em
     FROM clinicas WHERE id=$1`, [req.params.id]);
@@ -3200,7 +3670,7 @@ app.get('/api/admin/clinicas/:id', superauth, async (req, res) => {
 
 // edita dados da clínica
 app.put('/api/admin/clinicas/:id', superauth, async (req, res) => {
-  const cols = ['nome', 'cnpj', 'email', 'telefone', 'endereco', 'horario', 'plano_social'].filter(c => req.body[c] !== undefined);
+  const cols = ['nome', 'cnpj', 'email', 'telefone', 'endereco', 'horario', 'plano_social', 'plano_cursos'].filter(c => req.body[c] !== undefined);
   if (!cols.length) return res.status(400).json({ erro: 'Nada a atualizar' });
   const sets = cols.map((c, i) => `${c}=$${i + 2}`).join(',');
   const r = await pool.query(`UPDATE clinicas SET ${sets} WHERE id=$1 RETURNING id`, [req.params.id, ...cols.map(c => req.body[c])]);
@@ -3969,12 +4439,78 @@ const POSTS = [
 
 /* o WordPress usava barra no fim; manda pra URL canônica sem barra
    (senão os links relativos da página quebram e o Google vê duas URLs) */
-const ROTAS_CONTEUDO = new Set(['/site-para-fisioterapeutas', '/blog', '/loja', '/fale-com-a-mari', ...POSTS.map(p => `/blog/${p.slug}`)]);
+const ROTAS_CONTEUDO = new Set(['/site-para-fisioterapeutas', '/blog', '/loja', '/fale-com-a-mari', '/cursos', ...POSTS.map(p => `/blog/${p.slug}`)]);
 app.get(/^\/[a-z0-9-]+(\/[a-z0-9-]+)?\/$/, (req, res, next) => {
   const semBarra = req.path.slice(0, -1);
   // as páginas de produto são dinâmicas: /loja/{slug}/ também vai para a URL sem barra
-  const conhecida = ROTAS_CONTEUDO.has(semBarra) || semBarra.startsWith('/loja/');
+  const conhecida = ROTAS_CONTEUDO.has(semBarra) || semBarra.startsWith('/loja/')
+    || semBarra.startsWith('/curso/') || semBarra.startsWith('/inscricao/');
   return conhecida ? res.redirect(301, semBarra) : next();
+});
+
+/* ---------- CURSOS ---------- */
+app.get('/cursos', async (req, res, next) => {
+  try {
+    await servirSeo(res, 'cursos.html', {
+      titulo: 'Conhecimento em movimento — cursos e workshops de fisioterapia | PerFisio',
+      descricao: 'Cursos, workshops e turmas práticas criados por clínicas e fisioterapeutas do PerFisio. '
+        + 'Veja as datas, as vagas e garanta a sua online.',
+      url: urlPublica(req, '/cursos'),
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'CollectionPage', inLanguage: 'pt-BR',
+        name: 'Conhecimento em movimento', url: urlPublica(req, '/cursos'),
+      },
+    });
+  } catch (e) { next(e); }
+});
+
+app.get('/curso/:slug', async (req, res, next) => {
+  try {
+    const r = await pool.query(`
+      SELECT ${CURSO_COLS}, cl.nome AS clinica_nome, f.nome AS fisio_nome, ${ENCONTRO_JSON} AS encontros
+      FROM cursos c JOIN clinicas cl ON cl.id = c.clinica_id LEFT JOIN fisios f ON f.id = c.fisio_id
+      WHERE c.slug = $1 AND ${CURSO_PUBLICO}`, [req.params.slug]);
+    if (!r.rowCount) return next();
+    const curso = r.rows[0];
+    const url = urlPublica(req, `/curso/${curso.slug}`);
+    const comeca = (curso.encontros[0] || {}).data || null;
+    await servirSeo(res, 'curso.html', {
+      titulo: `${curso.titulo} — ${curso.clinica_nome} | PerFisio`,
+      descricao: resumir(curso.resumo || curso.descricao
+        || `${curso.titulo}, com ${curso.clinica_nome}${curso.cidade ? ' em ' + cidadeTitulo(curso.cidade) : ''}.`),
+      url, tipo: 'article',
+      dados: { curso },
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'Course', name: curso.titulo,
+        description: resumir(curso.resumo || curso.descricao || curso.titulo, 300),
+        provider: { '@type': 'Organization', name: curso.clinica_nome },
+        ...(comeca ? {
+          hasCourseInstance: {
+            '@type': 'CourseInstance',
+            courseMode: curso.modalidade === 'online' ? 'Online' : 'Onsite',
+            startDate: comeca,
+            ...(curso.local || curso.cidade ? { location: [curso.local, cidadeTitulo(curso.cidade)].filter(Boolean).join(' — ') } : {}),
+          },
+        } : {}),
+        ...(curso.preco ? {
+          offers: { '@type': 'Offer', price: curso.preco, priceCurrency: 'BRL', url, category: 'Paid' },
+        } : {}),
+      },
+    });
+  } catch (e) { next(e); }
+});
+
+// página do aluno, aberta pelo código da inscrição (sem senha)
+app.get('/inscricao/:codigo', async (req, res, next) => {
+  try {
+    res.setHeader('X-Robots-Tag', 'noindex'); // é a página de uma pessoa, não vai para o índice
+    await servirSeo(res, 'inscricao.html', {
+      titulo: 'Sua inscrição — PerFisio',
+      descricao: 'Acompanhe sua inscrição, veja as datas e confirme presença em cada encontro.',
+      url: urlPublica(req, `/inscricao/${req.params.codigo}`),
+      dados: { codigo: String(req.params.codigo || '').trim() },
+    });
+  } catch (e) { next(e); }
 });
 
 /* ---------- APRESENTAÇÃO COM A MARI ----------
@@ -4234,19 +4770,23 @@ app.get('/robots.txt', (req, res) => {
 
 app.get('/sitemap.xml', async (req, res) => {
   try {
-    const [cidades, fisios, clinicas, produtos] = await Promise.all([
+    const [cidades, fisios, clinicas, produtos, cursos] = await Promise.all([
       cidadesPublicas(),
       pool.query(`SELECT f.slug, f.cidade FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
                   WHERE f.publico AND f.ativo AND c.ativa AND coalesce(f.slug,'') <> ''`),
       pool.query(`SELECT slug FROM clinicas WHERE ativa AND coalesce(slug,'') <> ''
                   AND (perfil->>'visivel')::boolean IS TRUE`),
       pool.query(`SELECT slug FROM produtos WHERE ativo AND coalesce(slug,'') <> '' ORDER BY categoria, nome`),
+      pool.query(`SELECT c.slug FROM cursos c JOIN clinicas cl ON cl.id = c.clinica_id
+                  WHERE ${CURSO_PUBLICO} AND coalesce(c.slug,'') <> ''`),
     ]);
     const urls = [
       { loc: '/', prio: '1.0' },
       { loc: '/planos.html', prio: '0.8' },
       { loc: '/site-para-fisioterapeutas', prio: '0.9' },
       { loc: '/fale-com-a-mari', prio: '0.8' },
+      { loc: '/cursos', prio: '0.8' },
+      ...cursos.rows.map(c => ({ loc: `/curso/${c.slug}`, prio: '0.7' })),
       { loc: '/loja', prio: '0.8' },
       ...produtos.rows.map(p => ({ loc: `/loja/${p.slug}`, prio: '0.6' })),
       { loc: '/blog', prio: '0.6' },
@@ -4267,6 +4807,7 @@ app.get('/sitemap.xml', async (req, res) => {
 const HTML_CANONICO = new Map([
   ['/index.html', '/'], ['/planos', '/planos.html'], ['/cadastro.html', '/cadastro'], ['/loja.html', '/loja'],
   ['/fale-com-a-mari.html', '/fale-com-a-mari'], ['/fale-com-mari', '/fale-com-a-mari'],
+  ['/cursos.html', '/cursos'],
   ['/site-para-fisioterapeutas.html', '/site-para-fisioterapeutas'], ['/blog.html', '/blog'],
   ...POSTS.map(p => [`/${p.slug}.html`, `/blog/${p.slug}`]),
 ]);

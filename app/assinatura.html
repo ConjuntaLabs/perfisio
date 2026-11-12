@@ -66,6 +66,21 @@
           <button class="btn btn-soft btn-sm" id="btnSocial" onclick="alternarSocial()">—</button>
         </div>
       </div>
+
+      <div class="as-card" style="margin-top:20px;">
+        <h3><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ideia"></use></svg> Add-on de cursos</h3>
+        <p style="font-size:.88rem;color:var(--text);line-height:1.65;margin-top:8px;">
+          Crie cursos e workshops, venda as vagas online e faça a chamada de presença — no menu
+          <b>Cursos</b>. Os publicados aparecem em <a href="/cursos" target="_blank" style="color:var(--primary-dark);font-weight:600;">perfisio.com.br/cursos</a>.
+          Liga e desliga quando quiser, com cobrança proporcional.
+        </p>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:16px;flex-wrap:wrap;">
+          <div style="font-size:1.35rem;font-weight:900;color:var(--ink);" id="cursosValor">—</div>
+          <span class="badge gray" id="cursosStatus">—</span>
+          <div style="flex:1;"></div>
+          <button class="btn btn-soft btn-sm" id="btnCursos" onclick="alternarCursos()">—</button>
+        </div>
+      </div>
     </div>
 
     <div>
@@ -129,7 +144,7 @@
     async function carregar() {
       B = await PF.api('/api/billing');
       const preco = c => B.planos.find(p => p.chave === c) || { centavos: 0 };
-      const pFisio = preco('fisio'), pSocial = preco('social');
+      const pFisio = preco('fisio'), pSocial = preco('social'), pCursosLinha = preco('cursos');
       document.getElementById('avisoStripe').style.display = B.pagamento ? 'none' : '';
 
       const [cor, rotulo] = STATUS[B.status] || ['gray', B.status];
@@ -151,6 +166,7 @@
       document.getElementById('planoLinhas').innerHTML = assinante ? `
         <div class="as-linha"><span class="rot">${B.licencas} × licença de profissional</span><span class="val">${brl(B.licencas * pFisio.centavos / 100)}</span></div>
         ${B.plano_social ? `<div class="as-linha"><span class="rot">Add-on de redes sociais</span><span class="val">${brl(pSocial.centavos / 100)}</span></div>` : ''}
+        ${B.plano_cursos ? `<div class="as-linha"><span class="rot">Add-on de cursos</span><span class="val">${brl(pCursosLinha.centavos / 100)}</span></div>` : ''}
         <div class="as-linha"><span class="rot"><b>Total mensal</b></span><span class="val">${brl(B.mensal)}</span></div>` : `
         <div class="as-linha"><span class="rot">Licença por profissional</span><span class="val">${brl(pFisio.centavos / 100)}/mês</span></div>
         <div class="as-linha"><span class="rot">Você tem hoje</span><span class="val">${B.fisios_ativos} fisioterapeuta(s) ativo(s)</span></div>
@@ -169,6 +185,15 @@
       const bs = document.getElementById('btnSocial');
       bs.textContent = B.plano_social ? 'Cancelar add-on' : 'Contratar add-on';
       bs.className = 'btn btn-sm ' + (B.plano_social ? 'btn-ghost' : 'btn-soft');
+
+      const pCursos = preco('cursos');
+      document.getElementById('cursosValor').textContent = brl(pCursos.centavos / 100) + '/mês';
+      const cs = document.getElementById('cursosStatus');
+      cs.className = 'badge ' + (B.plano_cursos ? 'green' : 'gray');
+      cs.textContent = B.plano_cursos ? 'Contratado' : 'Não contratado';
+      const bc = document.getElementById('btnCursos');
+      bc.textContent = B.plano_cursos ? 'Cancelar add-on' : 'Contratar add-on';
+      bc.className = 'btn btn-sm ' + (B.plano_cursos ? 'btn-ghost' : 'btn-soft');
       bs.disabled = !assinante;
       bs.title = assinante ? '' : 'Assine o PerFisio para contratar o add-on';
 
@@ -217,6 +242,16 @@
       try {
         const r = await PF.api('/api/billing/licencas', { method: 'POST' });
         App.toast(r.mudou ? `Licenças atualizadas para ${r.licencas}` : 'Licenças já estavam corretas');
+        carregar();
+      } catch (e) { aviso('' + e.message, 'erro'); }
+    }
+
+    async function alternarCursos() {
+      const ligar = !B.plano_cursos;
+      if (!ligar && !confirm('Cancelar o add-on de cursos? Os cursos publicados saem do diretório no próximo ciclo.')) return;
+      try {
+        await PF.api('/api/billing/cursos', { method: 'POST', body: { ativo: ligar } });
+        App.toast(ligar ? 'Add-on contratado!' : 'Add-on cancelado');
         carregar();
       } catch (e) { aviso('' + e.message, 'erro'); }
     }

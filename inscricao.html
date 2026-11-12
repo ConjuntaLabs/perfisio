@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sua inscrição — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}</style>
+  <style>
+    body { background: var(--bg); padding: 26px 16px 48px; }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    .topo-marca { text-align: center; margin-bottom: 20px; }
+    .topo-marca img { height: 28px; width: auto; }
+
+    .cartao { background: #fff; border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
+    .capa { padding: 24px 26px; color: #fff;
+      background: linear-gradient(135deg, var(--c, var(--primary)), color-mix(in srgb, var(--c, var(--primary)) 55%, #0F2A2E)); }
+    .capa .etiqueta { font-size: .72rem; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; opacity: .85; }
+    .capa h1 { font-size: 1.35rem; font-weight: 900; letter-spacing: -.5px; margin-top: 8px; line-height: 1.25; }
+    .capa .sub { font-size: .88rem; opacity: .9; margin-top: 8px; display: flex; gap: 8px 18px; flex-wrap: wrap; }
+    .capa .sub span { display: flex; align-items: center; gap: 7px; }
+
+    .corpo { padding: 22px 26px 26px; }
+    .linha-status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+    .codigo { background: var(--bg); border: 1px dashed var(--line); border-radius: 9px; padding: 7px 13px;
+      font-weight: 800; color: var(--ink); letter-spacing: 1px; font-size: .9rem; }
+    .pendente-aviso { background: var(--amber-soft); color: var(--amber); border-radius: 12px; padding: 13px 15px;
+      font-size: .85rem; font-weight: 600; line-height: 1.6; margin-top: 18px; }
+
+    h2 { font-size: 1rem; font-weight: 800; color: var(--ink); margin: 24px 0 4px; }
+    .ajuda { font-size: .84rem; color: var(--text-soft); line-height: 1.6; }
+    .encontro { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 15px 0; border-bottom: 1px solid var(--line); }
+    .encontro:last-child { border-bottom: none; }
+    .data { flex: none; width: 60px; text-align: center; background: var(--primary-soft); color: var(--primary-dark);
+      border-radius: 10px; padding: 7px 0; font-weight: 800; line-height: 1.15; }
+    .data b { display: block; font-size: 1.1rem; }
+    .data span { font-size: .66rem; text-transform: uppercase; letter-spacing: .5px; }
+    .encontro .quem { flex: 1; min-width: 150px; }
+    .encontro .tit { font-size: .93rem; font-weight: 700; color: var(--ink); }
+    .encontro .hora { font-size: .8rem; color: var(--text-soft); margin-top: 2px; }
+    .resposta { display: flex; gap: 6px; }
+    .resposta button { border: 1px solid var(--line); background: #fff; color: var(--text-soft); border-radius: 9px;
+      padding: 8px 13px; font-size: .82rem; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 6px; }
+    .resposta button:hover { border-color: #C3CFCC; }
+    .resposta button.on.vou { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .resposta button.on.nao { background: var(--red-soft); border-color: #F0C9C9; color: var(--red); }
+    .presenca { font-size: .74rem; font-weight: 700; padding: 4px 10px; border-radius: 99px; }
+    .presenca.sim { background: var(--green-soft); color: var(--green); }
+    .presenca.nao { background: var(--red-soft); color: var(--red); }
+
+    .erro-box { text-align: center; padding: 40px 20px; color: var(--text-soft); }
+    .rodape { text-align: center; margin-top: 18px; font-size: .78rem; color: var(--text-soft); }
+    .rodape a { color: var(--primary-dark); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topo-marca"><a href="/"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio"></a></div>
+    <div id="conteudo"><div class="cartao"><div class="erro-box">Carregando sua inscrição...</div></div></div>
+    <div class="rodape">Inscrição organizada pelo <a href="/cursos">PerFisio</a></div>
+  </div>
+
+  <script src="/assets/js/app.js"></script>
+  <script>
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const ICO = n => `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#${n}"></use></svg>`;
+    const moeda = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+    const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const CODIGO = (window.__PF && window.__PF.codigo) || location.pathname.split('/').filter(Boolean).pop();
+    const caixa = document.getElementById('conteudo');
+    let INS = null;
+
+    const ROTULO = {
+      confirmada: ['green', 'inscrição confirmada'],
+      pendente: ['amber', 'aguardando confirmação'],
+      cancelada: ['gray', 'inscrição cancelada'],
+    };
+
+    function presencaDe(encontroId) {
+      return (INS.presencas || []).find(p => p.encontro_id === encontroId) || {};
+    }
+
+    function desenhar() {
+      const i = INS;
+      const [cor, texto] = ROTULO[i.status] || ['gray', i.status];
+      const onde = i.modalidade === 'online' ? 'Online, ao vivo' : [i.local, i.cidade].filter(Boolean).join(' · ') || 'Presencial';
+      const passou = iso => iso < new Date().toISOString().slice(0, 10);
+
+      caixa.innerHTML = `
+        <div class="cartao">
+          <div class="capa" style="--c:${esc(i.cor)}">
+            <div class="etiqueta">Sua inscrição</div>
+            <h1>${esc(i.titulo)}</h1>
+            <div class="sub">
+              <span>${ICO('hospital')} ${esc(i.clinica_nome)}</span>
+              <span>${ICO(i.modalidade === 'online' ? 'celular' : 'local')} ${esc(onde)}</span>
+              ${i.carga_horaria ? `<span>${ICO('relogio')} ${esc(i.carga_horaria)}</span>` : ''}
+            </div>
+          </div>
+          <div class="corpo">
+            <div class="linha-status">
+              <span class="badge ${cor}">${texto}</span>
+              <span class="codigo">${esc(i.codigo)}</span>
+              <span style="font-size:.84rem;color:var(--text-soft);margin-left:auto;">
+                ${esc(i.nome)}${i.valor ? ' · ' + moeda(i.valor) : ' · gratuito'}</span>
+            </div>
+
+            ${i.status === 'pendente' ? `<div class="pendente-aviso">
+              ${ICO('ampulheta')} A ${esc(i.clinica_nome)} ainda está confirmando o pagamento da sua vaga.
+              Assim que confirmar, você recebe um e-mail — e esta página muda sozinha.</div>` : ''}
+
+            ${i.modalidade === 'online' && i.link_online && i.status === 'confirmada'
+              ? `<p class="ajuda" style="margin-top:18px;">${ICO('link')}
+                   <a href="${esc(i.link_online)}" target="_blank" rel="noopener" style="color:var(--primary-dark);font-weight:700;">Link da sala online</a></p>`
+              : ''}
+
+            <h2>Encontros</h2>
+            <p class="ajuda">Avise se você vai — a organização se programa com isso. Depois do encontro,
+              a presença confirmada pela clínica aparece aqui.</p>
+            ${i.encontros.length ? i.encontros.map(e => {
+              const d = new Date(e.data + 'T12:00:00');
+              const p = presencaDe(e.id);
+              const fechado = passou(e.data) || i.status === 'cancelada';
+              return `
+                <div class="encontro">
+                  <span class="data"><b>${String(d.getDate()).padStart(2, '0')}</b><span>${MESES[d.getMonth()]}</span></span>
+                  <span class="quem">
+                    <span class="tit">${esc(e.titulo || 'Encontro ' + e.ordem)}</span>
+                    <span class="hora">${d.toLocaleDateString('pt-BR', { weekday: 'long' })}${e.inicio ? ` · ${esc(e.inicio)}${e.fim ? ' às ' + esc(e.fim) : ''}` : ''}</span>
+                  </span>
+                  ${p.presente === true ? '<span class="presenca sim">presença confirmada</span>'
+                    : p.presente === false ? '<span class="presenca nao">falta registrada</span>' : ''}
+                  ${fechado ? '' : `
+                    <span class="resposta">
+                      <button type="button" class="vou ${p.confirmada === true ? 'on' : ''}" data-encontro="${esc(e.id)}" data-vai="1">${ICO('check')} Vou</button>
+                      <button type="button" class="nao ${p.confirmada === false ? 'on' : ''}" data-encontro="${esc(e.id)}" data-vai="0">Não vou</button>
+                    </span>`}
+                </div>`;
+            }).join('') : '<p class="ajuda" style="margin-top:12px;">As datas ainda vão ser divulgadas pela organização.</p>'}
+          </div>
+        </div>`;
+
+      caixa.querySelectorAll('[data-encontro]').forEach(b => b.addEventListener('click', () => responder(b)));
+    }
+
+    async function responder(botao) {
+      const encontro = botao.dataset.encontro;
+      const vai = botao.dataset.vai === '1';
+      const atual = presencaDe(encontro).confirmada;
+      const valor = atual === vai ? null : vai;   // clicar de novo desfaz a resposta
+      caixa.querySelectorAll(`[data-encontro="${encontro}"]`).forEach(b => { b.disabled = true; });
+      try {
+        await (await fetch(`/api/public/inscricao/${encodeURIComponent(CODIGO)}/presenca`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ encontro_id: encontro, vai: valor }),
+        }).then(async r => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erro || 'Não consegui salvar'); return r; }));
+        const p = (INS.presencas || []).find(x => x.encontro_id === encontro);
+        if (p) p.confirmada = valor;
+        else (INS.presencas = INS.presencas || []).push({ encontro_id: encontro, confirmada: valor, presente: null });
+        App.toast(valor === null ? 'Resposta removida' : valor ? 'Avisamos que você vai!' : 'Avisamos que você não vai');
+        desenhar();
+      } catch (e) {
+        App.toast(e.message, 'error');
+        caixa.querySelectorAll(`[data-encontro="${encontro}"]`).forEach(b => { b.disabled = false; });
+      }
+    }
+
+    (async function carregar() {
+      try {
+        const r = await fetch('/api/public/inscricao/' + encodeURIComponent(CODIGO));
+        if (!r.ok) throw new Error('não achei');
+        INS = await r.json();
+      } catch (e) {
+        caixa.innerHTML = `<div class="cartao"><div class="erro-box">
+          <b style="display:block;color:var(--ink);font-size:1rem;margin-bottom:6px;">Inscrição não encontrada</b>
+          Confira o código do e-mail de confirmação ou <a href="/cursos" style="color:var(--primary-dark);font-weight:700;">veja os cursos abertos</a>.
+        </div></div>`;
+        return;
+      }
+      document.title = `${INS.titulo} — sua inscrição | PerFisio`;
+      desenhar();
+      if (new URLSearchParams(location.search).get('pago')) {
+        App.toast('Pagamento recebido! Sua vaga está garantida.');
+      }
+    })();
+  </script>
+</body>
+</html>

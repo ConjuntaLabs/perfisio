@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Curso — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}</style>
+  <link rel="stylesheet" href="/assets/css/site.css">
+  <style>
+    .cs-capa { color: #fff; padding: 54px 6vw 46px;
+      background: linear-gradient(135deg, var(--c, var(--primary)), color-mix(in srgb, var(--c, var(--primary)) 55%, #0F2A2E)); }
+    .cs-capa .dentro { max-width: 1080px; margin: 0 auto; }
+    .cs-trilha { font-size: .8rem; font-weight: 600; opacity: .85; }
+    .cs-trilha a { color: #fff; text-decoration: underline; }
+    .cs-capa h1 { font-size: clamp(1.8rem, 4vw, 2.7rem); font-weight: 900; letter-spacing: -1.2px; line-height: 1.12; margin: 16px 0 0; max-width: 760px; }
+    .cs-capa .resumo { font-size: 1.02rem; line-height: 1.7; margin-top: 14px; max-width: 640px; opacity: .92; }
+    .cs-marcas { display: flex; gap: 10px 22px; flex-wrap: wrap; margin-top: 24px; font-size: .88rem; font-weight: 600; }
+    .cs-marcas span { display: flex; align-items: center; gap: 8px; }
+
+    .cs-corpo { max-width: 1080px; margin: 0 auto; padding: 44px 6vw 0; display: grid;
+      grid-template-columns: 1.3fr .7fr; gap: 40px; align-items: start; }
+    .cs-bloco + .cs-bloco { margin-top: 34px; }
+    .cs-bloco h2 { font-size: 1.15rem; font-weight: 800; color: var(--ink); letter-spacing: -.3px; }
+    .cs-bloco p { font-size: 1rem; color: var(--text); line-height: 1.8; margin-top: 12px; white-space: pre-line; }
+    .cs-encontros { list-style: none; padding: 0; margin: 16px 0 0; }
+    .cs-encontros li { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--line); }
+    .cs-encontros li:last-child { border-bottom: none; }
+    .cs-data { flex: none; width: 62px; text-align: center; background: var(--primary-soft); color: var(--primary-dark);
+      border-radius: 10px; padding: 7px 0; font-weight: 800; line-height: 1.15; }
+    .cs-data b { display: block; font-size: 1.15rem; }
+    .cs-data span { font-size: .68rem; text-transform: uppercase; letter-spacing: .5px; }
+    .cs-encontros .tit { font-size: .95rem; font-weight: 700; color: var(--ink); }
+    .cs-encontros .hora { font-size: .82rem; color: var(--text-soft); margin-top: 3px; }
+
+    .cs-caixa { position: sticky; top: 92px; background: #fff; border: 1px solid var(--line); border-radius: 18px;
+      box-shadow: var(--shadow-lg); padding: 24px; }
+    .cs-preco { font-size: 2rem; font-weight: 900; color: var(--ink); letter-spacing: -1px; }
+    .cs-preco small { display: block; font-size: .82rem; font-weight: 600; color: var(--text-soft); letter-spacing: 0; margin-top: 2px; }
+    .cs-vagas { font-size: .82rem; font-weight: 700; color: var(--amber); margin-top: 10px; }
+    .cs-caixa .field { margin-top: 12px; }
+    .cs-caixa .btn { width: 100%; justify-content: center; padding: 13px; margin-top: 16px; }
+    .cs-aviso { font-size: .76rem; color: var(--text-soft); line-height: 1.6; margin-top: 12px; text-align: center; }
+    .cs-fechado { background: var(--amber-soft); color: var(--amber); border-radius: 12px; padding: 14px 16px;
+      font-size: .86rem; font-weight: 700; line-height: 1.55; }
+    .cs-ok { text-align: center; }
+    .cs-ok .marca { width: 60px; height: 60px; border-radius: 50%; background: var(--green-soft); color: var(--green);
+      display: inline-grid; place-items: center; }
+    .cs-ok .marca .i { width: 30px; height: 30px; }
+    .cs-ok h3 { font-size: 1.15rem; font-weight: 900; color: var(--ink); margin: 12px 0 6px; }
+    .cs-ok p { font-size: .88rem; color: var(--text); line-height: 1.65; }
+    .cs-ok .codigo { display: inline-block; margin-top: 14px; background: var(--bg); border: 1px dashed var(--line);
+      border-radius: 10px; padding: 9px 16px; font-weight: 800; color: var(--ink); letter-spacing: 1px; }
+
+    @media (max-width: 920px) {
+      .cs-corpo { grid-template-columns: 1fr; gap: 28px; }
+      .cs-caixa { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <header class="lp-header lp-loja">
+    <a class="logo" href="/"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
+    <nav>
+      <a href="/cursos">Cursos</a>
+      <a href="/#profissionais">Encontrar fisioterapeuta</a>
+      <a href="/loja">Loja</a>
+      <a href="/planos.html">Planos</a>
+      <a href="/login.html" class="btn btn-ghost btn-sm">Entrar</a>
+    </nav>
+  </header>
+
+  <main id="pagina">
+    <div style="padding:70px 6vw;text-align:center;color:var(--text-soft);">Carregando curso...</div>
+  </main>
+
+  <footer class="lp-footer">
+    <b style="color:var(--ink);">PerFisio</b> © 2026 — Conectando pacientes e fisioterapeutas ·
+    <a href="/">Início</a> · <a href="/cursos">Cursos</a> · <a href="/planos.html">Planos</a>
+  </footer>
+
+  <script src="/assets/js/app.js"></script>
+  <script src="/assets/js/conta.js"></script>
+  <script>
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const ICO = n => `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#${n}"></use></svg>`;
+    const moeda = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+    const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const pagina = document.getElementById('pagina');
+    let CURSO = (window.__PF && window.__PF.curso) || null;
+
+    function desenhar() {
+      const c = CURSO;
+      const restam = c.vagas ? Math.max(c.vagas - (c.inscritos || 0), 0) : null;
+      const esgotado = restam === 0;
+      const fechado = !c.inscricoes_abertas;
+      const onde = c.modalidade === 'online'
+        ? 'Online, ao vivo'
+        : [c.local, c.cidade].filter(Boolean).join(' · ') || 'Presencial';
+
+      pagina.innerHTML = `
+        <section class="cs-capa" style="--c:${esc(c.cor)}">
+          <div class="dentro">
+            <div class="cs-trilha"><a href="/cursos">Cursos</a> › ${esc(c.clinica_nome)}</div>
+            <h1>${esc(c.titulo)}</h1>
+            ${c.resumo ? `<p class="resumo">${esc(c.resumo)}</p>` : ''}
+            <div class="cs-marcas">
+              <span>${ICO(c.modalidade === 'online' ? 'celular' : 'local')} ${esc(onde)}</span>
+              ${c.carga_horaria ? `<span>${ICO('relogio')} ${esc(c.carga_horaria)}</span>` : ''}
+              ${c.encontros.length ? `<span>${ICO('agenda')} ${c.encontros.length} encontro(s)</span>` : ''}
+              ${c.fisio_nome ? `<span>${ICO('estetoscopio')} ${esc(c.fisio_nome)}</span>` : ''}
+            </div>
+          </div>
+        </section>
+
+        <div class="cs-corpo">
+          <div>
+            ${c.descricao ? `<div class="cs-bloco"><h2>Sobre o curso</h2><p>${esc(c.descricao)}</p></div>` : ''}
+            ${c.publico ? `<div class="cs-bloco"><h2>Para quem é</h2><p>${esc(c.publico)}</p></div>` : ''}
+            ${c.encontros.length ? `
+              <div class="cs-bloco">
+                <h2>Encontros</h2>
+                <ul class="cs-encontros">
+                  ${c.encontros.map(e => {
+                    const d = new Date(e.data + 'T12:00:00');
+                    return `<li>
+                      <span class="cs-data"><b>${String(d.getDate()).padStart(2, '0')}</b><span>${MESES[d.getMonth()]}</span></span>
+                      <span>
+                        <span class="tit">${esc(e.titulo || 'Encontro ' + e.ordem)}</span>
+                        <span class="hora">${d.toLocaleDateString('pt-BR', { weekday: 'long' })}${e.inicio ? ` · ${esc(e.inicio)}${e.fim ? ' às ' + esc(e.fim) : ''}` : ''}</span>
+                      </span>
+                    </li>`;
+                  }).join('')}
+                </ul>
+              </div>` : ''}
+            <div class="cs-bloco">
+              <h2>Quem organiza</h2>
+              <p>${esc(c.clinica_nome)}${c.fisio_nome ? ` · ${esc(c.fisio_nome)}${c.fisio_esp ? ', ' + esc(c.fisio_esp) : ''}` : ''}.
+                 A inscrição, o pagamento e a lista de presença são feitos aqui pelo PerFisio.</p>
+            </div>
+          </div>
+
+          <aside class="cs-caixa" id="caixa">
+            <div class="cs-preco">${c.preco ? moeda(c.preco) : 'Gratuito'}
+              <small>${c.preco ? 'por pessoa' : 'inscrição sem custo'}</small></div>
+            ${restam !== null ? `<div class="cs-vagas">${esgotado ? 'Vagas esgotadas' : `${restam} vaga(s) restante(s)`}</div>` : ''}
+            ${fechado || esgotado
+              ? `<div class="cs-fechado" style="margin-top:14px;">${fechado ? 'As inscrições estão fechadas no momento.' : 'Todas as vagas foram preenchidas.'}
+                   <div style="font-weight:500;margin-top:6px;">Fale com a ${esc(c.clinica_nome)} para entrar na lista de espera.</div></div>`
+              : `
+                <div class="field"><label>Seu nome *</label><input type="text" id="iNome"></div>
+                <div class="field"><label>E-mail *</label><input type="email" id="iEmail" placeholder="voce@email.com"></div>
+                <div class="field"><label>WhatsApp *</label><input type="tel" id="iTel" placeholder="(53) 99999-0000"></div>
+                <div class="field"><label>CREFITO (se for fisioterapeuta)</label><input type="text" id="iCrefito" placeholder="opcional"></div>
+                <div class="field"><label>Algo que a organização precisa saber?</label>
+                  <textarea id="iObs" rows="2" placeholder="opcional"></textarea></div>
+                <button class="btn btn-primary" type="button" id="btnInscrever">
+                  ${c.preco ? 'Garantir minha vaga' : 'Fazer minha inscrição'}</button>
+                <div class="cs-aviso">${c.preco
+                  ? 'Você recebe o código da inscrição na hora e as instruções de pagamento por e-mail.'
+                  : 'Você recebe o código da inscrição na hora.'}</div>`}
+          </aside>
+        </div>`;
+
+      const btn = document.getElementById('btnInscrever');
+      if (btn) btn.addEventListener('click', inscrever);
+      preencherComAConta();
+    }
+
+    // quem já entrou na conta do PerFisio não precisa digitar de novo
+    function preencherComAConta() {
+      const c = Conta.atual && Conta.atual();
+      if (!c) return;
+      const por = (id, v) => { const e = document.getElementById(id); if (e && !e.value && v) e.value = v; };
+      por('iNome', c.nome); por('iEmail', c.email); por('iTel', c.telefone);
+    }
+
+    async function inscrever() {
+      const btn = document.getElementById('btnInscrever');
+      const v = id => (document.getElementById(id) || {}).value || '';
+      const corpo = {
+        nome: v('iNome').trim(), email: v('iEmail').trim(), telefone: v('iTel').trim(),
+        crefito: v('iCrefito').trim(), obs: v('iObs').trim(),
+      };
+      btn.disabled = true; btn.textContent = 'Enviando...';
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (Conta.token && Conta.token()) headers.Authorization = 'Bearer ' + Conta.token();
+        const r = await fetch(`/api/public/cursos/${encodeURIComponent(CURSO.slug)}/inscrever`, {
+          method: 'POST', headers, body: JSON.stringify(corpo),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          // e-mail já inscrito: leva direto para a página da inscrição
+          if (d.inscricao) { location.href = `/inscricao/${d.inscricao}`; return; }
+          throw new Error(d.erro || 'Não consegui concluir a inscrição');
+        }
+        if (d.checkout) { location.href = d.checkout; return; }
+        pronto(d, corpo.nome);
+      } catch (e) {
+        App.toast(e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = CURSO.preco ? 'Garantir minha vaga' : 'Fazer minha inscrição';
+      }
+    }
+
+    function pronto(d, nome) {
+      document.getElementById('caixa').innerHTML = `
+        <div class="cs-ok">
+          <span class="marca">${ICO('confirmado')}</span>
+          <h3>Inscrição feita, ${esc(nome.split(' ')[0])}!</h3>
+          <p>${d.status === 'confirmada'
+            ? 'Sua vaga está garantida. Guarde o código: é por ele que você confirma presença em cada encontro.'
+            : `A ${esc(CURSO.clinica_nome)} vai confirmar o pagamento de ${moeda(d.valor)} e avisar você por e-mail. Guarde o código abaixo.`}</p>
+          <div class="codigo">${esc(d.codigo)}</div>
+          <a class="btn btn-primary" href="/inscricao/${esc(d.codigo)}" style="width:100%;justify-content:center;padding:12px;margin-top:16px;">
+            Abrir minha inscrição</a>
+        </div>`;
+      document.getElementById('caixa').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    (async function iniciar() {
+      if (!CURSO) {
+        const slug = location.pathname.split('/').filter(Boolean).pop();
+        try { CURSO = await (await fetch('/api/public/cursos/' + encodeURIComponent(slug))).json(); }
+        catch (e) { CURSO = null; }
+        if (!CURSO || CURSO.erro) {
+          pagina.innerHTML = '<div style="padding:70px 6vw;text-align:center;color:var(--text-soft);">Curso não encontrado. <a href="/cursos" style="color:var(--primary-dark);font-weight:700;">Ver todos os cursos</a></div>';
+          return;
+        }
+      }
+      document.title = `${CURSO.titulo} — PerFisio`;
+      desenhar();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cursos — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="../assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}</style>
+  <style>
+    .cur-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
+    .cur-item { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+    .cur-item .faixa { padding: 16px 18px; color: #fff; display: flex; gap: 12px; align-items: flex-start;
+      background: linear-gradient(135deg, var(--c, var(--primary)), color-mix(in srgb, var(--c, var(--primary)) 55%, #0F2A2E)); }
+    .cur-item .faixa .i { width: 26px; height: 26px; flex: none; opacity: .9; }
+    .cur-item .faixa h3 { font-size: 1rem; font-weight: 800; line-height: 1.3; }
+    .cur-item .faixa .quando { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; opacity: .85; }
+    .cur-item .dados { padding: 14px 18px 16px; }
+    .cur-item .numeros { display: flex; gap: 18px; margin: 12px 0 14px; }
+    .cur-item .numeros div b { display: block; font-size: 1.15rem; font-weight: 800; color: var(--ink); }
+    .cur-item .numeros div span { font-size: .7rem; color: var(--text-soft); text-transform: uppercase; letter-spacing: .5px; }
+    .cur-item .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+    .encontro-linha { display: grid; grid-template-columns: 150px 1fr 110px 110px 36px; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .encontro-linha input { width: 100%; }
+    .encontro-linha button { background: none; border: none; color: var(--text-soft); cursor: pointer; padding: 6px; }
+    .encontro-linha button:hover { color: var(--red); }
+    .sem-plano { max-width: 620px; margin: 40px auto; text-align: center; background: var(--card);
+      border: 1px solid var(--line); border-radius: 18px; padding: 40px 32px; box-shadow: var(--shadow); }
+    .sem-plano .i { width: 40px; height: 40px; color: var(--primary); }
+    .sem-plano h2 { font-size: 1.25rem; font-weight: 800; color: var(--ink); margin: 14px 0 8px; }
+    .sem-plano p { font-size: .92rem; color: var(--text-soft); line-height: 1.7; margin-bottom: 22px; }
+    .sem-plano ul { list-style: none; padding: 0; margin: 0 0 24px; text-align: left; display: inline-block; }
+    .sem-plano li { font-size: .9rem; color: var(--text); margin: 8px 0; display: flex; gap: 10px; align-items: flex-start; }
+    .sem-plano li .i { width: 18px; height: 18px; color: var(--primary); margin-top: 2px; }
+    @media (max-width: 760px) { .encontro-linha { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body data-page="cursos" data-title="Cursos" data-subtitle="Crie, venda e faça a chamada dos seus cursos">
+
+  <div id="semPlano" style="display:none;">
+    <div class="sem-plano">
+      <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ideia"></use></svg>
+      <h2>Conhecimento em movimento</h2>
+      <p>O módulo de cursos é um add-on do plano. Com ele, a sua clínica monta cursos e workshops,
+        vende as vagas online e controla a presença de cada aluno.</p>
+      <ul>
+        <li><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> Página do curso pronta, no diretório do PerFisio</li>
+        <li><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> Inscrição e pagamento online, com vagas controladas</li>
+        <li><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> O aluno confirma se vai a cada encontro</li>
+        <li><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#check"></use></svg> Chamada de presença e lista de inscritos</li>
+      </ul>
+      <div>
+        <a class="btn btn-primary" href="assinatura.html" style="padding:12px 24px;">Ativar o módulo de cursos</a>
+        <a class="btn btn-ghost" href="/cursos" target="_blank" style="padding:12px 24px;">Ver como aparece</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="painelCursos" style="display:none;">
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+      <div class="stat-card">
+        <div class="s-top"><span class="s-label">Cursos</span><div class="s-ico" style="background:var(--primary-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#ideia"></use></svg></div></div>
+        <div class="s-value" id="stCursos">—</div><div class="s-delta"><span class="muted" id="stCursosSub"></span></div>
+      </div>
+      <div class="stat-card">
+        <div class="s-top"><span class="s-label">Inscritos</span><div class="s-ico" style="background:var(--blue-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pessoas"></use></svg></div></div>
+        <div class="s-value" id="stInscritos">—</div><div class="s-delta"><span class="muted" id="stInscritosSub"></span></div>
+      </div>
+      <div class="stat-card">
+        <div class="s-top"><span class="s-label">Receita confirmada</span><div class="s-ico" style="background:var(--green-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#dinheiro"></use></svg></div></div>
+        <div class="s-value" id="stReceita">—</div><div class="s-delta"><span class="muted">inscrições já confirmadas</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="s-top"><span class="s-label">Próximo encontro</span><div class="s-ico" style="background:var(--amber-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg></div></div>
+        <div class="s-value" id="stProximo" style="font-size:1.1rem;">—</div><div class="s-delta"><span class="muted" id="stProximoSub"></span></div>
+      </div>
+    </div>
+
+    <div class="page-head">
+      <div><h2>Seus cursos</h2><div class="sub">Publicados aparecem em <a href="/cursos" target="_blank" style="color:var(--primary-dark);font-weight:600;">perfisio.com.br/cursos</a></div></div>
+      <button class="btn btn-primary" onclick="abrirCurso()">+ Novo curso</button>
+    </div>
+
+    <div class="cur-grade" id="grade"></div>
+  </div>
+
+  <!-- MODAL CURSO -->
+  <div class="modal-overlay" id="mCurso">
+    <div class="modal wide">
+      <div class="modal-head">
+        <h3 id="cuTitulo">Novo curso</h3>
+        <button class="close" onclick="App.closeModal('mCurso')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field full"><label>Título *</label><input type="text" id="cuNome" placeholder="Ex.: Pilates clínico na lombalgia — turma de março"></div>
+          <div class="field full"><label>Resumo (uma linha, aparece no card)</label><input type="text" id="cuResumo"></div>
+          <div class="field full"><label>Descrição</label><textarea id="cuDescricao" style="min-height:110px;" placeholder="O que vai ser visto, o que o aluno leva, material incluso..."></textarea></div>
+          <div class="field full"><label>Para quem é</label><input type="text" id="cuPublico" placeholder="Ex.: fisioterapeutas e estudantes do último ano"></div>
+          <div class="field"><label>Modalidade</label>
+            <select id="cuModalidade"><option value="presencial">Presencial</option><option value="online">Online ao vivo</option></select></div>
+          <div class="field"><label>Professor(a)</label><select id="cuFisio"></select></div>
+          <div class="field"><label>Local</label><input type="text" id="cuLocal" placeholder="Ex.: Clínica Movimente, sala 2"></div>
+          <div class="field"><label>Cidade</label><input type="text" id="cuCidade" placeholder="Ex.: Pelotas/RS"></div>
+          <div class="field full" id="boxLink" style="display:none;"><label>Link da sala online (só os inscritos veem)</label>
+            <input type="url" id="cuLink" placeholder="https://meet.google.com/..."></div>
+          <div class="field"><label>Preço (R$)</label><input type="number" id="cuPreco" min="0" step="0.01" placeholder="0 = gratuito"></div>
+          <div class="field"><label>Vagas</label><input type="number" id="cuVagas" min="0" step="1" placeholder="0 = sem limite"></div>
+          <div class="field"><label>Carga horária</label><input type="text" id="cuCarga" placeholder="Ex.: 8 horas"></div>
+          <div class="field"><label>Cor</label><input type="color" id="cuCor" value="#0DA189" style="height:42px;padding:4px;"></div>
+          <div class="field full">
+            <label>Encontros</label>
+            <div id="encontros"></div>
+            <button class="btn btn-soft btn-sm" type="button" onclick="addEncontro()" style="margin-top:6px;">+ Adicionar encontro</button>
+          </div>
+          <div class="check-row"><input type="checkbox" id="cuPublicado"><label for="cuPublicado" style="margin:0;font-weight:500;">Publicado no diretório</label></div>
+          <div class="check-row"><input type="checkbox" id="cuAbertas" checked><label for="cuAbertas" style="margin:0;font-weight:500;">Inscrições abertas</label></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mCurso')">Cancelar</button>
+        <button class="btn btn-primary" id="btnCurso" onclick="salvarCurso()">Salvar curso</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL INSCRITOS E CHAMADA -->
+  <div class="modal-overlay" id="mAlunos">
+    <div class="modal wide">
+      <div class="modal-head">
+        <h3 id="alTitulo">Inscritos</h3>
+        <button class="close" onclick="App.closeModal('mAlunos')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="tabs" id="abasAlunos">
+          <button class="tab active" data-tab="lista">Inscritos</button>
+          <button class="tab" data-tab="chamada">Chamada</button>
+        </div>
+        <div data-tab-panel="lista" id="painelLista"></div>
+        <div data-tab-panel="chamada" style="display:none;" id="painelChamada"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mAlunos')">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/sidebar.js"></script>
+  <script>
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const ICO = n => `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#${n}"></use></svg>`;
+    const moeda = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 });
+    const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    const dia = iso => { const d = new Date(iso + 'T12:00:00'); return `${String(d.getDate()).padStart(2, '0')} ${MESES[d.getMonth()]}`; };
+
+    let CURSOS = [], FISIOS = [], cursoEdit = null, alunos = null;
+
+    App.initTabs(document.getElementById('abasAlunos'));
+
+    function quando(c) {
+      if (!c.encontros.length) return 'sem datas';
+      const d = c.encontros.map(e => e.data).sort();
+      return d[0] === d[d.length - 1] ? dia(d[0]) : `${dia(d[0])} — ${dia(d[d.length - 1])}`;
+    }
+
+    function desenhar() {
+      const grade = document.getElementById('grade');
+      grade.innerHTML = CURSOS.length ? CURSOS.map(c => `
+        <article class="cur-item">
+          <div class="faixa" style="--c:${esc(c.cor)}">
+            ${ICO(c.icone || 'ideia')}
+            <div>
+              <div class="quando">${esc(quando(c))} · ${c.modalidade === 'online' ? 'online' : 'presencial'}</div>
+              <h3>${esc(c.titulo)}</h3>
+            </div>
+          </div>
+          <div class="dados">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <span class="badge ${c.publicado ? 'green' : 'gray'}">${c.publicado ? 'publicado' : 'rascunho'}</span>
+              <span class="badge ${c.inscricoes_abertas ? 'primary' : 'amber'}">${c.inscricoes_abertas ? 'inscrições abertas' : 'inscrições fechadas'}</span>
+            </div>
+            <div class="numeros">
+              <div><b>${c.inscritos}${c.vagas ? `/${c.vagas}` : ''}</b><span>inscritos</span></div>
+              <div><b>${c.confirmados}</b><span>confirmados</span></div>
+              <div><b>${c.preco ? moeda(c.preco) : 'grátis'}</b><span>por vaga</span></div>
+            </div>
+            <div class="acoes">
+              <button class="btn btn-soft btn-sm" onclick="abrirAlunos('${c.id}')">${ICO('pessoas')} Inscritos e chamada</button>
+              <button class="btn btn-ghost btn-sm" onclick="abrirCurso('${c.id}')">Editar</button>
+              ${c.publicado ? `<a class="btn btn-ghost btn-sm" href="/curso/${esc(c.slug)}" target="_blank" title="Ver a página">${ICO('externo')}</a>` : ''}
+              <button class="btn btn-ghost btn-sm" onclick="excluirCurso('${c.id}')" title="Excluir">${ICO('lixeira')}</button>
+            </div>
+          </div>
+        </article>`).join('')
+        : `<div class="empty" style="grid-column:1/-1;">Nenhum curso ainda. Crie o primeiro em <b>+ Novo curso</b>.</div>`;
+
+      const inscritos = CURSOS.reduce((s, c) => s + c.inscritos, 0);
+      const confirmados = CURSOS.reduce((s, c) => s + c.confirmados, 0);
+      document.getElementById('stCursos').textContent = CURSOS.length;
+      document.getElementById('stCursosSub').textContent = `${CURSOS.filter(c => c.publicado).length} publicado(s)`;
+      document.getElementById('stInscritos').textContent = inscritos;
+      document.getElementById('stInscritosSub').textContent = `${confirmados} confirmado(s)`;
+      document.getElementById('stReceita').textContent = App.money(CURSOS.reduce((s, c) => s + Number(c.receita || 0), 0));
+
+      const hoje = new Date().toISOString().slice(0, 10);
+      const futuros = CURSOS.flatMap(c => c.encontros.map(e => ({ ...e, curso: c.titulo })))
+        .filter(e => e.data >= hoje).sort((a, b) => a.data.localeCompare(b.data));
+      document.getElementById('stProximo').textContent = futuros.length ? dia(futuros[0].data) : '—';
+      document.getElementById('stProximoSub').textContent = futuros.length ? futuros[0].curso.slice(0, 34) : 'nenhum encontro marcado';
+    }
+
+    /* ---------- criar / editar ---------- */
+    function linhaEncontro(e = {}) {
+      const div = document.createElement('div');
+      div.className = 'encontro-linha';
+      div.dataset.id = e.id || '';
+      div.innerHTML = `
+        <input type="date" value="${esc(e.data || '')}" data-campo="data">
+        <input type="text" value="${esc(e.titulo || '')}" placeholder="Título do encontro (opcional)" data-campo="titulo">
+        <input type="time" value="${esc(e.inicio || '')}" data-campo="inicio">
+        <input type="time" value="${esc(e.fim || '')}" data-campo="fim">
+        <button type="button" title="Remover">${ICO('lixeira')}</button>`;
+      div.querySelector('button').addEventListener('click', () => div.remove());
+      return div;
+    }
+    function addEncontro(e) { document.getElementById('encontros').appendChild(linhaEncontro(e)); }
+
+    function abrirCurso(id) {
+      cursoEdit = id ? CURSOS.find(c => c.id === id) : null;
+      const c = cursoEdit || {};
+      document.getElementById('cuTitulo').textContent = cursoEdit ? 'Editar curso' : 'Novo curso';
+      const v = (campo, valor) => { document.getElementById(campo).value = valor == null ? '' : valor; };
+      v('cuNome', c.titulo); v('cuResumo', c.resumo); v('cuDescricao', c.descricao); v('cuPublico', c.publico);
+      v('cuLocal', c.local); v('cuCidade', c.cidade); v('cuLink', c.link_online);
+      v('cuPreco', c.preco || ''); v('cuVagas', c.vagas || ''); v('cuCarga', c.carga_horaria);
+      document.getElementById('cuModalidade').value = c.modalidade || 'presencial';
+      document.getElementById('cuCor').value = c.cor || '#0DA189';
+      document.getElementById('cuPublicado').checked = !!c.publicado;
+      document.getElementById('cuAbertas').checked = cursoEdit ? !!c.inscricoes_abertas : true;
+      document.getElementById('cuFisio').innerHTML = '<option value="">— sem professor definido —</option>'
+        + FISIOS.map(f => `<option value="${f.id}"${f.id === c.fisio_id ? ' selected' : ''}>${esc(f.nome)}</option>`).join('');
+      const lista = document.getElementById('encontros');
+      lista.innerHTML = '';
+      (c.encontros || []).forEach(addEncontro);
+      if (!(c.encontros || []).length) addEncontro();
+      alternarLink();
+      App.openModal('mCurso');
+    }
+    document.getElementById('cuModalidade').addEventListener('change', alternarLink);
+    function alternarLink() {
+      document.getElementById('boxLink').style.display =
+        document.getElementById('cuModalidade').value === 'online' ? '' : 'none';
+    }
+
+    function encontrosDoForm() {
+      return [...document.querySelectorAll('#encontros .encontro-linha')].map(l => {
+        const campo = c => l.querySelector(`[data-campo="${c}"]`).value;
+        return { id: l.dataset.id || undefined, data: campo('data'), titulo: campo('titulo'), inicio: campo('inicio'), fim: campo('fim') };
+      }).filter(e => e.data);
+    }
+
+    async function salvarCurso() {
+      const btn = document.getElementById('btnCurso');
+      const val = id => document.getElementById(id).value.trim();
+      const corpo = {
+        titulo: val('cuNome'), resumo: val('cuResumo') || null, descricao: val('cuDescricao') || null,
+        publico: val('cuPublico') || null, modalidade: document.getElementById('cuModalidade').value,
+        fisio_id: document.getElementById('cuFisio').value || null,
+        local: val('cuLocal') || null, cidade: val('cuCidade') || null, link_online: val('cuLink') || null,
+        preco: Number(val('cuPreco')) || 0, vagas: parseInt(val('cuVagas'), 10) || 0,
+        carga_horaria: val('cuCarga') || null, cor: document.getElementById('cuCor').value,
+        publicado: document.getElementById('cuPublicado').checked,
+        inscricoes_abertas: document.getElementById('cuAbertas').checked,
+        encontros: encontrosDoForm(),
+      };
+      if (corpo.titulo.length < 4) { App.toast('Dê um título ao curso', 'error'); return; }
+      btn.disabled = true; btn.textContent = 'Salvando...';
+      try {
+        if (cursoEdit) await PF.api('/api/cursos/' + cursoEdit.id, { method: 'PUT', body: corpo });
+        else await PF.api('/api/cursos', { method: 'POST', body: corpo });
+        App.closeModal('mCurso');
+        App.toast('Curso salvo');
+        await carregar();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false; btn.textContent = 'Salvar curso';
+    }
+
+    async function excluirCurso(id) {
+      const c = CURSOS.find(x => x.id === id);
+      if (!confirm(`Excluir "${c.titulo}"? Isso apaga os encontros do curso.`)) return;
+      try { await PF.api('/api/cursos/' + id, { method: 'DELETE' }); App.toast('Curso excluído'); await carregar(); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* ---------- inscritos e chamada ---------- */
+    const ST_INSCRICAO = { pendente: 'amber', confirmada: 'green', cancelada: 'gray' };
+
+    async function abrirAlunos(id) {
+      App.openModal('mAlunos');
+      document.getElementById('painelLista').innerHTML = '<div class="empty">Carregando...</div>';
+      document.getElementById('painelChamada').innerHTML = '';
+      try { alunos = await PF.api(`/api/cursos/${id}/inscricoes`); }
+      catch (e) { document.getElementById('painelLista').innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+      document.getElementById('alTitulo').textContent = alunos.curso.titulo;
+      desenharAlunos();
+      desenharChamada();
+    }
+
+    function desenharAlunos() {
+      const lista = alunos.inscricoes;
+      document.getElementById('painelLista').innerHTML = lista.length ? `
+        <div class="table-wrap"><table class="data">
+          <thead><tr><th>Aluno</th><th>Contato</th><th>Inscrição</th><th style="text-align:right;">Valor</th><th>Situação</th></tr></thead>
+          <tbody>${lista.map(i => `
+            <tr>
+              <td><div class="p-name" style="font-weight:600;">${esc(i.nome)}</div>
+                <div class="p-sub" style="font-size:.73rem;color:var(--text-soft);">${esc(i.codigo)}${i.crefito ? ' · ' + esc(i.crefito) : ''}</div></td>
+              <td style="font-size:.8rem;line-height:1.5;">
+                <a href="mailto:${esc(i.email)}" style="color:var(--primary-dark);font-weight:600;">${esc(i.email)}</a><br>
+                ${i.telefone ? `<a href="https://wa.me/55${esc(i.telefone.replace(/\D/g, ''))}" target="_blank" style="color:var(--primary-dark);">${esc(i.telefone)}</a>` : '—'}
+                ${i.obs ? `<br><em style="color:var(--text-soft);">${esc(i.obs)}</em>` : ''}</td>
+              <td style="font-size:.8rem;">${PF.fmtData(i.criado_em.slice(0, 10))}<br>
+                <span style="color:var(--text-soft);font-size:.72rem;">${esc(i.pagamento || 'sem pagamento registrado')}</span></td>
+              <td style="text-align:right;font-weight:700;">${i.valor ? moeda(i.valor) : 'grátis'}</td>
+              <td><select onchange="mudarInscricao('${i.id}', this.value)" style="font-size:.8rem;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-family:inherit;">
+                ${Object.keys(ST_INSCRICAO).map(s => `<option value="${s}"${s === i.status ? ' selected' : ''}>${s}</option>`).join('')}
+              </select></td>
+            </tr>`).join('')}</tbody>
+        </table></div>`
+        : '<div class="empty">Ninguém inscrito ainda. Divulgue o link da página do curso.</div>';
+    }
+
+    async function mudarInscricao(id, status) {
+      try {
+        await PF.api('/api/inscricoes/' + id, { method: 'PUT', body: { status } });
+        App.toast('Inscrição atualizada');
+        const i = alunos.inscricoes.find(x => x.id === id);
+        if (i) i.status = status;
+        desenharChamada();
+        carregar();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    function desenharChamada() {
+      const box = document.getElementById('painelChamada');
+      const encontros = alunos.curso.encontros;
+      if (!encontros.length) { box.innerHTML = '<div class="empty">Este curso ainda não tem encontros marcados.</div>'; return; }
+      const hoje = new Date().toISOString().slice(0, 10);
+      const atual = box.dataset.encontro || (encontros.find(e => e.data >= hoje) || encontros[encontros.length - 1]).id;
+      box.dataset.encontro = atual;
+      const validos = alunos.inscricoes.filter(i => i.status !== 'cancelada');
+      const presenca = (i, enc) => (i.presencas || []).find(p => p.encontro_id === enc) || {};
+
+      box.innerHTML = `
+        <div class="field" style="max-width:340px;">
+          <label>Encontro</label>
+          <select id="selEncontro">${encontros.map(e =>
+            `<option value="${e.id}"${e.id === atual ? ' selected' : ''}>${dia(e.data)} · ${esc(e.titulo || 'Encontro ' + e.ordem)}</option>`).join('')}</select>
+        </div>
+        ${validos.length ? `
+          <div class="table-wrap" style="margin-top:14px;"><table class="data">
+            <thead><tr><th>Aluno</th><th>Avisou que vem?</th><th style="text-align:right;">Presença</th></tr></thead>
+            <tbody>${validos.map(i => {
+              const p = presenca(i, atual);
+              return `<tr>
+                <td><div class="p-name">${esc(i.nome)}</div>
+                  <div class="p-sub" style="font-size:.72rem;color:var(--text-soft);">${i.status === 'pendente' ? 'pagamento pendente' : esc(i.codigo)}</div></td>
+                <td>${p.confirmada === true ? '<span class="badge green">disse que vem</span>'
+                  : p.confirmada === false ? '<span class="badge red">avisou que não vem</span>'
+                  : '<span class="badge gray">sem resposta</span>'}</td>
+                <td style="text-align:right;white-space:nowrap;">
+                  <button class="btn btn-sm ${p.presente === true ? 'btn-primary' : 'btn-ghost'}" onclick="marcar('${i.id}', true)">Veio</button>
+                  <button class="btn btn-sm ${p.presente === false ? 'btn-danger' : 'btn-ghost'}" onclick="marcar('${i.id}', false)">Faltou</button>
+                </td>
+              </tr>`;
+            }).join('')}</tbody>
+          </table></div>
+          <div style="font-size:.78rem;color:var(--text-soft);margin-top:10px;">A presença é salva na hora, aluno por aluno.</div>`
+          : '<div class="empty">Nenhum aluno ativo neste curso.</div>'}`;
+
+      const sel = document.getElementById('selEncontro');
+      if (sel) sel.addEventListener('change', () => { box.dataset.encontro = sel.value; desenharChamada(); });
+    }
+
+    async function marcar(inscricaoId, presente) {
+      const box = document.getElementById('painelChamada');
+      const encontro = box.dataset.encontro;
+      const i = alunos.inscricoes.find(x => x.id === inscricaoId);
+      const p = (i.presencas || []).find(x => x.encontro_id === encontro);
+      const valor = p && p.presente === presente ? null : presente;   // clicar de novo desmarca
+      try {
+        await PF.api(`/api/encontros/${encontro}/chamada`, { method: 'POST', body: { presencas: [{ inscricao_id: inscricaoId, presente: valor }] } });
+        if (p) p.presente = valor;
+        else (i.presencas = i.presencas || []).push({ encontro_id: encontro, confirmada: null, presente: valor });
+        desenharChamada();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* ---------- boot ---------- */
+    async function carregar() {
+      const d = await PF.api('/api/cursos');
+      CURSOS = d.cursos;
+      desenhar();
+    }
+
+    (async function boot() {
+      try { FISIOS = (await PF.get('fisios')).filter(f => f.ativo); } catch (e) { FISIOS = []; }
+      try {
+        await carregar();
+        document.getElementById('painelCursos').style.display = '';
+      } catch (e) {
+        if (/plano/i.test(e.message)) document.getElementById('semPlano').style.display = '';
+        else App.toast(e.message, 'error');
+      }
+      // link direto vindo do aviso do sino: /app/cursos.html?curso=slug
+      const slug = new URLSearchParams(location.search).get('curso');
+      const achado = slug && CURSOS.find(c => c.slug === slug);
+      if (achado) abrirAlunos(achado.id);
+    })();
+  </script>
+</body>
+</html>
