@@ -13,8 +13,8 @@
     /* tamanho do logo: um só para todas as páginas, e junto do HTML para
        não depender de uma folha antiga no cache do navegador */
     .lp-header .logo{display:flex;align-items:center;overflow:hidden}
-    .lp-header .logo img{height:26px;width:auto;display:block}
-    @media (max-width:760px){.lp-header .logo img{height:19px}}
+    .lp-header .logo img,.lp-header .logo .marca{height:26px;width:auto;display:block}
+    @media (max-width:760px){.lp-header .logo img,.lp-header .logo .marca{height:19px}}
     /* entrada do logo: escondido com animação de reserva. Se a GSAP não chegar
        em 0,6s, o logo aparece sozinho; chegando antes, o JS marca html.logo-ok
        e faz o logo subir atrás da máscara, como os títulos */
@@ -204,7 +204,7 @@
       } catch (e) { /* código inválido: não mostra nada */ }
     })();
   </script>
-  <script src="/assets/js/logo.js?v=2"></script>
+  <script src="/assets/js/logo.js?v=4"></script>
   <script src="/assets/js/menu.js?v=3"></script>
 </body>
 </html>
