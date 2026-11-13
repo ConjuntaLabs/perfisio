@@ -12,8 +12,16 @@
   <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}
     /* tamanho do logo: um só para todas as páginas, e junto do HTML para
        não depender de uma folha antiga no cache do navegador */
-    .lp-header .logo img{height:30px;width:auto;display:block}
-    @media (max-width:760px){.lp-header .logo img{height:22px}}</style>
+    .lp-header .logo{display:flex;align-items:center;overflow:hidden}
+    .lp-header .logo img{height:26px;width:auto;display:block}
+    @media (max-width:760px){.lp-header .logo img{height:19px}}
+    /* entrada do logo: escondido com animação de reserva. Se a GSAP não chegar
+       em 0,6s, o logo aparece sozinho; chegando antes, o JS marca html.logo-ok
+       e faz o logo subir atrás da máscara, como os títulos */
+    .lp-header .logo img{opacity:0;animation:logoReserva .4s .6s forwards}
+    html.logo-ok .lp-header .logo img{opacity:1;animation:none}
+    @keyframes logoReserva{to{opacity:1}}
+    @media (prefers-reduced-motion:reduce){.lp-header .logo img{opacity:1;animation:none}}</style>
   <style>
     body { background: var(--bg); }
     .lp-header {
@@ -59,7 +67,7 @@
 <body>
 
   <header class="lp-header" id="topo">
-    <a class="logo" href="/" id="topoLogo"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
+    <a class="logo" href="/" id="topoLogo"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio" width="152" height="26"></a>
     <nav id="topoNav">
       <a href="/#profissionais">← Voltar ao diretório</a>
       <a href="/login.html" class="btn btn-ghost btn-sm">Entrar</a>
@@ -246,6 +254,7 @@
 
     boot();
   </script>
+  <script src="/assets/js/logo.js"></script>
   <script src="/assets/js/menu.js"></script>
 </body>
 </html>

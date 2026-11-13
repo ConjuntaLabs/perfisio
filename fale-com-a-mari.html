@@ -12,8 +12,16 @@
   <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}
     /* tamanho do logo: um só para todas as páginas, e junto do HTML para
        não depender de uma folha antiga no cache do navegador */
-    .lp-header .logo img{height:30px;width:auto;display:block}
-    @media (max-width:760px){.lp-header .logo img{height:22px}}</style>
+    .lp-header .logo{display:flex;align-items:center;overflow:hidden}
+    .lp-header .logo img{height:26px;width:auto;display:block}
+    @media (max-width:760px){.lp-header .logo img{height:19px}}
+    /* entrada do logo: escondido com animação de reserva. Se a GSAP não chegar
+       em 0,6s, o logo aparece sozinho; chegando antes, o JS marca html.logo-ok
+       e faz o logo subir atrás da máscara, como os títulos */
+    .lp-header .logo img{opacity:0;animation:logoReserva .4s .6s forwards}
+    html.logo-ok .lp-header .logo img{opacity:1;animation:none}
+    @keyframes logoReserva{to{opacity:1}}
+    @media (prefers-reduced-motion:reduce){.lp-header .logo img{opacity:1;animation:none}}</style>
   <link rel="stylesheet" href="/assets/css/site.css">
   <style>
     /* ---------- títulos animados ----------
@@ -202,7 +210,7 @@
 </head>
 <body>
   <header class="lp-header lp-loja">
-    <a class="logo" href="/"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio" width="176" height="30"></a>
+    <a class="logo" href="/"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio" width="152" height="26"></a>
     <nav>
       <a href="/site-para-fisioterapeutas">Para fisioterapeutas</a>
       <a href="/planos.html">Planos</a>
@@ -640,17 +648,14 @@
     }));
   </script>
 
+  <!-- o logo.js entra antes: é ele quem carrega a GSAP (e anima o logo) -->
+  <script src="/assets/js/logo.js"></script>
+
   <!-- títulos animados: a página funciona inteira sem isso -->
   <script>
     (function animacoes() {
       const parado = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (parado) { document.documentElement.classList.add('gsap-ok'); return; }
-
-      const carregar = src => new Promise((ok, erro) => {
-        const s = document.createElement('script');
-        s.src = src; s.async = true; s.onload = ok; s.onerror = erro;
-        document.head.appendChild(s);
-      });
 
       /* cada palavra vira <span class="pal"><span class="in">palavra</span></span>,
          preservando o <em> e os outros destaques do título */
@@ -692,10 +697,10 @@
         });
       };
 
-      Promise.all([
-        carregar('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js'),
-        carregar('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js'),
-      ]).then(() => comVisibilidade(() => {
+      // o carregador vive no logo.js, que já pede a GSAP para animar o logo;
+      // se aquele arquivo não tiver chegado, a reserva do CSS mostra os títulos
+      const pedirGsap = window.carregarGsap || (() => Promise.reject(new Error('sem logo.js')));
+      pedirGsap(['ScrollTrigger']).then(() => comVisibilidade(() => {
         if (!window.gsap || !window.ScrollTrigger) return;
         gsap.registerPlugin(ScrollTrigger);
         const naHora = performance.now() < 700;   // a reserva do CSS ainda não revelou nada
