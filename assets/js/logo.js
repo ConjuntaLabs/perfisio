@@ -33,7 +33,18 @@
     // marcar e pôr o estado inicial no mesmo quadro: sem piscada entre os dois
     revelar();
     gsap.set(img, { yPercent: 112, y: 0, opacity: 0 });
-    gsap.to(img, { yPercent: 0, y: 0, opacity: 1, duration: .7, ease: 'power3.out', delay: .05 });
+    const entrada = gsap.to(img, { yPercent: 0, y: 0, opacity: 1, duration: .7, ease: 'power3.out', delay: .05 });
+
+    /* Rede de segurança: a GSAP anda com o requestAnimationFrame, e o navegador
+       congela o rAF também quando a janela está só encoberta — aí a aba continua
+       "visível", a animação para no estado inicial e o logo some do cabeçalho.
+       O setTimeout continua correndo nessas horas: se 1,2s depois a entrada não
+       acabou, tiramos o que a GSAP escreveu e o logo fica onde deve ficar. */
+    setTimeout(() => {
+      if (entrada.progress() === 1) return;
+      entrada.kill();
+      gsap.set(img, { clearProps: 'all' });
+    }, 1200);
   }
 
   /* Em aba de fundo o requestAnimationFrame congela e a GSAP ficaria parada no

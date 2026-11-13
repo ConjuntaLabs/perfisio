@@ -706,17 +706,24 @@
         const naHora = performance.now() < 700;   // a reserva do CSS ainda não revelou nada
         document.documentElement.classList.add('gsap-ok');
 
+        /* o que começa sozinho ao abrir a página entra nesta lista: se o
+           navegador congelar o requestAnimationFrame (janela encoberta), a GSAP
+           para no estado inicial e o texto some — o setTimeout lá embaixo
+           devolve tudo ao lugar */
+        const naEntrada = [];
+
         document.querySelectorAll('.anima-t').forEach((titulo, i) => {
           const primeiro = i === 0;
           if (primeiro && !naHora) return;        // o CSS já mostrou: não dá para esconder de novo
           const palavras = dividir(titulo);
-          gsap.fromTo(palavras,
+          const t = gsap.fromTo(palavras,
             { yPercent: 115, y: 0, opacity: 0 },
             {
               yPercent: 0, y: 0, opacity: 1, duration: .72, ease: 'power3.out', stagger: .045,
               scrollTrigger: primeiro ? undefined : { trigger: titulo, start: 'top 85%', once: true },
               delay: primeiro ? .05 : 0,
             });
+          if (primeiro) naEntrada.push([t, palavras]);
         });
 
         gsap.utils.toArray('[data-sobe]').forEach(el => {
@@ -727,7 +734,16 @@
         });
 
         const midia = document.getElementById('midia');
-        if (midia && naHora) gsap.fromTo(midia, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: .8, ease: 'power2.out', delay: .15 });
+        if (midia && naHora) naEntrada.push([
+          gsap.fromTo(midia, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: .8, ease: 'power2.out', delay: .15 }),
+          midia,
+        ]);
+
+        setTimeout(() => naEntrada.forEach(([t, alvo]) => {
+          if (t.progress() === 1) return;
+          t.kill();
+          gsap.set(alvo, { clearProps: 'all' });
+        }), 1400);
       })).catch(() => { document.documentElement.classList.add('gsap-ok'); });
     })();
   </script>
