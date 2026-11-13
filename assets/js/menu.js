@@ -27,6 +27,9 @@
 
     @media (max-width: 900px) {
       .lp-menu { display: flex; order: 2; margin-left: 0; }
+      /* com a folha aberta o nav desce para a linha de baixo e levava o
+         margin-left:auto com ele: sem isto o botão encosta no logo */
+      .lp-header.menu-aberto .lp-menu { margin-left: auto; }
       .lp-header { position: sticky; flex-wrap: wrap; }
       .lp-header .logo { order: 0; }
       /* fechado, a barra mostra só o que não pode sumir (o carrinho da loja) */
