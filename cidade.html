@@ -39,8 +39,31 @@
     .cid-hero h1 em { color: var(--primary-dark); font-style: normal; }
     .cid-hero p { color: var(--text-soft); font-size: 1.02rem; margin: 14px auto 0; max-width: 620px; line-height: 1.7; }
     .filtros { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 24px; }
-    .filtros .f-chip { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 999px; border: 1.5px solid var(--line); background: #fff; font-size: .88rem; font-weight: 600; color: var(--text-soft); cursor: pointer; }
-    .filtros .f-chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+    /* mesmos chips de vidro da home (o desfoque baixo é de propósito: mais do
+       que isso e o chip vira tinta branca em vez de vidro) */
+    .filtros .f-chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, .72);
+      background: rgba(255, 255, 255, .44);
+      -webkit-backdrop-filter: blur(14px) saturate(150%);
+      backdrop-filter: blur(14px) saturate(150%);
+      box-shadow: 0 6px 20px rgba(15, 42, 46, .10), inset 0 1px 0 rgba(255, 255, 255, .85);
+      font-size: .88rem; font-weight: 600; color: var(--text); cursor: pointer;
+      transition: background .18s, border-color .18s, box-shadow .18s, transform .18s, color .18s;
+    }
+    .filtros .f-chip:hover {
+      background: rgba(255, 255, 255, .66); border-color: rgba(255, 255, 255, .95);
+      color: var(--primary-dark); transform: translateY(-1px);
+      box-shadow: 0 10px 26px rgba(15, 42, 46, .14), inset 0 1px 0 rgba(255, 255, 255, .9);
+    }
+    .filtros .f-chip.on {
+      background: rgba(10, 130, 112, .86); border-color: rgba(255, 255, 255, .5); color: #fff;
+      box-shadow: 0 8px 22px rgba(10, 130, 112, .30), inset 0 1px 0 rgba(255, 255, 255, .35);
+    }
+    .filtros .f-chip.on:hover { background: rgba(10, 130, 112, .94); color: #fff; }
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+      .filtros .f-chip { background: rgba(255, 255, 255, .92); }
+    }
 
     .lista { max-width: 1180px; margin: 0 auto; padding: 32px 6vw 10px; }
     .perfil-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }
