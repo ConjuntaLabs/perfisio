@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vagas para fisioterapeutas — emprego, plantão e freela | PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}
+    /* tamanho do logo: um só para todas as páginas, e junto do HTML para
+       não depender de uma folha antiga no cache do navegador */
+    .lp-header .logo{display:flex;align-items:center;overflow:hidden}
+    .lp-header .logo img,.lp-header .logo .marca{height:26px;width:auto;display:block}
+    @media (max-width:760px){.lp-header .logo img,.lp-header .logo .marca{height:19px}}
+    /* entrada do logo: escondido com animação de reserva. Se a GSAP não chegar
+       em 0,6s, o logo aparece sozinho; chegando antes, o JS marca html.logo-ok
+       e faz o logo subir atrás da máscara, como os títulos */
+    .lp-header .logo img{opacity:0;animation:logoReserva .4s .6s forwards}
+    html.logo-ok .lp-header .logo img{opacity:1;animation:none}
+    @keyframes logoReserva{to{opacity:1}}
+    @media (prefers-reduced-motion:reduce){.lp-header .logo img{opacity:1;animation:none}}</style>
+  <link rel="stylesheet" href="/assets/css/site.css">
+  <style>
+    .vg-hero { padding: 56px 6vw 8px; text-align: center; background: linear-gradient(180deg, #F0FAF7 0%, #fff 100%); }
+    .vg-hero .kicker { font-size: .76rem; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: var(--primary-dark); }
+    .vg-hero h1 { font-size: clamp(2rem, 5vw, 3.1rem); font-weight: 900; color: var(--ink); letter-spacing: -1.4px; margin-top: 12px; line-height: 1.1; }
+    .vg-hero h1 em { color: var(--primary); font-style: normal; }
+    .vg-hero p { color: var(--text-soft); font-size: 1.02rem; margin: 16px auto 0; max-width: 640px; line-height: 1.75; }
+    .vg-wrap { max-width: 1120px; margin: 0 auto; padding: 0 6vw 10px; }
+
+    .vg-filtros { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 30px 0 10px; }
+    .vg-filtros select { border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font-family: inherit;
+      font-size: .84rem; font-weight: 600; color: var(--text); background: #fff; }
+    .vg-busca { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--line);
+      border-radius: 10px; padding: 8px 12px; color: var(--text-soft); margin-left: auto; }
+    .vg-busca input { border: none; outline: none; background: none; font-family: inherit; font-size: .86rem; width: 210px; color: var(--text); }
+    .vg-conta { font-size: .82rem; color: var(--text-soft); margin: 4px 0 18px; }
+
+    .vg-lista { display: flex; flex-direction: column; gap: 12px; }
+    .vg-card { display: flex; gap: 18px; align-items: flex-start; background: var(--card); border: 1px solid var(--line);
+      border-radius: 14px; padding: 20px 22px; box-shadow: var(--shadow); transition: transform .15s, box-shadow .15s, border-color .15s; }
+    .vg-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: #CFE0DB; }
+    .vg-selo { width: 46px; height: 46px; border-radius: 12px; flex: none; display: grid; place-items: center;
+      background: var(--primary-soft); color: var(--primary-dark); }
+    .vg-selo .i { width: 22px; height: 22px; }
+    .vg-meio { flex: 1; min-width: 0; }
+    .vg-card h2 { font-size: 1.04rem; font-weight: 800; color: var(--ink); letter-spacing: -.3px; line-height: 1.35; }
+    .vg-card h2 a { color: inherit; }
+    .vg-quem { font-size: .84rem; color: var(--text-soft); margin-top: 4px; display: flex; gap: 6px 14px; flex-wrap: wrap; }
+    .vg-quem span { display: inline-flex; align-items: center; gap: 6px; }
+    .vg-resumo { font-size: .86rem; color: var(--text-soft); line-height: 1.6; margin-top: 10px; }
+    .vg-tags { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 12px; }
+    .vg-tag { font-size: .72rem; font-weight: 700; padding: 4px 10px; border-radius: 99px;
+      background: var(--bg); color: var(--text-soft); border: 1px solid var(--line); }
+    .vg-tag.vinculo { background: var(--primary-soft); color: var(--primary-dark); border-color: transparent; }
+    .vg-dir { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+    .vg-salario { font-size: 1rem; font-weight: 800; color: var(--ink); white-space: nowrap; }
+    .vg-salario small { display: block; font-size: .72rem; font-weight: 600; color: var(--text-soft); }
+    .vg-quando { font-size: .72rem; color: var(--text-soft); }
+
+    .vg-vazio { text-align: center; padding: 56px 20px; color: var(--text-soft);
+      border: 1px dashed var(--line); border-radius: 18px; background: #fff; }
+    .vg-vazio .i { width: 34px; height: 34px; color: var(--primary); }
+    .vg-vazio h3 { font-size: 1.05rem; font-weight: 800; color: var(--ink); margin: 12px 0 6px; }
+    .vg-vazio p { font-size: .9rem; line-height: 1.7; max-width: 460px; margin: 0 auto 18px; }
+
+    .vg-cta { background: var(--ink); color: #fff; border-radius: 20px; padding: 36px; margin: 48px 0 0;
+      display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+    .vg-cta h3 { font-size: 1.3rem; font-weight: 800; letter-spacing: -.4px; }
+    .vg-cta p { color: #9FB4B1; font-size: .94rem; line-height: 1.7; margin-top: 8px; max-width: 580px; }
+
+    @media (max-width: 680px) {
+      .vg-card { flex-wrap: wrap; gap: 14px; padding: 18px; }
+      .vg-dir { flex-direction: row; align-items: center; width: 100%; text-align: left; justify-content: space-between; }
+      .vg-busca { margin-left: 0; width: 100%; }
+      .vg-busca input { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header class="lp-header lp-loja">
+    <a class="logo" href="/"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio" width="152" height="26"></a>
+    <nav>
+      <a href="/#profissionais">Encontrar fisioterapeuta</a>
+      <a href="/site-para-fisioterapeutas">Para fisioterapeutas</a>
+      <a href="/vagas" style="color:var(--ink);">Vagas</a>
+      <a href="/cursos">Cursos</a>
+      <a href="/loja">Loja</a>
+      <a href="/login.html" class="btn btn-ghost btn-sm">Entrar</a>
+      <a href="/cadastro" class="btn btn-primary btn-sm">Criar perfil grátis</a>
+    </nav>
+  </header>
+
+  <section class="vg-hero">
+    <div class="kicker">Vagas</div>
+    <h1>Quem move pessoas <em>também procura lugar</em></h1>
+    <p>Emprego, plantão, freela, estágio e substituição em clínicas, hospitais, home cares e estúdios.
+      Você se candidata em um minuto, sem currículo em PDF, e acompanha a resposta pelo código.</p>
+  </section>
+
+  <div class="vg-wrap">
+    <div class="vg-filtros" id="filtros">
+      <select id="tipo">
+        <option value="">Todos os vínculos</option>
+        <option value="clt">CLT</option>
+        <option value="pj">PJ</option>
+        <option value="freela">Freela</option>
+        <option value="plantao">Plantão</option>
+        <option value="temporario">Temporária / cobertura</option>
+        <option value="estagio">Estágio</option>
+        <option value="voluntario">Voluntária</option>
+      </select>
+      <select id="modalidade">
+        <option value="">Qualquer formato</option>
+        <option value="presencial">Presencial</option>
+        <option value="domiciliar">Domiciliar</option>
+        <option value="hibrido">Híbrido</option>
+        <option value="online">Teleatendimento</option>
+      </select>
+      <select id="cidade"><option value="">Todas as cidades</option></select>
+      <label class="vg-busca">
+        <svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#busca"></use></svg>
+        <input type="search" id="busca" placeholder="Cargo, especialidade ou instituição">
+      </label>
+    </div>
+    <div class="vg-conta" id="conta"></div>
+
+    <div class="vg-lista" id="lista">
+      <div class="vg-vazio">Carregando vagas...</div>
+    </div>
+
+    <div class="vg-cta">
+      <div style="flex:1;min-width:280px;">
+        <h3>Está com uma vaga aberta?</h3>
+        <p>Clínicas, hospitais, home cares e estúdios publicam aqui dentro: a vaga ganha página própria,
+          entra no Google de vagas e as candidaturas chegam organizadas no painel — com CREFITO, cidade e
+          o perfil público de quem se candidatou. Faz parte do plano, sem custo por vaga.</p>
+      </div>
+      <a class="btn btn-primary" href="/cadastro" style="padding:12px 24px;">Publicar uma vaga</a>
+      <a class="btn btn-ghost" href="/planos.html" style="padding:12px 24px;background:transparent;color:#fff;border-color:rgba(255,255,255,.3);">Ver planos</a>
+    </div>
+  </div>
+
+  <footer class="lp-footer">
+    <b style="color:var(--ink);">PerFisio</b> © 2026 — Conectando pacientes e fisioterapeutas ·
+    <a href="/">Início</a> · <a href="/vagas">Vagas</a> · <a href="/cursos">Cursos</a> ·
+    <a href="/loja">Loja</a> · <a href="/planos.html">Planos</a> · <a href="/blog">Blog</a>
+  </footer>
+
+  <script src="/assets/js/app.js"></script>
+  <script src="/assets/js/vagas-comum.js?v=1"></script>
+  <script>
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const ICO = n => `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#${n}"></use></svg>`;
+
+    let VAGAS = [], tipo = '', modalidade = '', cidade = '', termo = '';
+    const lista = document.getElementById('lista');
+
+    const visiveis = () => VAGAS.filter(v => {
+      if (tipo && v.tipo !== tipo) return false;
+      if (modalidade && v.modalidade !== modalidade) return false;
+      if (cidade && v.cidade !== cidade) return false;
+      if (!termo) return true;
+      const t = termo.toLowerCase();
+      return [v.titulo, v.resumo, v.especialidade, v.empresa, v.clinica_nome, v.cidade]
+        .some(x => String(x || '').toLowerCase().includes(t));
+    });
+
+    function desenhar() {
+      const achadas = visiveis();
+      document.getElementById('conta').textContent = VAGAS.length
+        ? `${achadas.length} vaga${achadas.length === 1 ? '' : 's'} ${achadas.length === VAGAS.length ? 'aberta' + (achadas.length === 1 ? '' : 's') : 'com esse filtro'}`
+        : '';
+
+      if (!achadas.length) {
+        lista.innerHTML = `
+          <div class="vg-vazio">
+            ${ICO('maleta')}
+            <h3>${VAGAS.length ? 'Nenhuma vaga com esse filtro' : 'Ainda não há vagas publicadas'}</h3>
+            <p>${VAGAS.length
+              ? 'Tente outra cidade, outro vínculo ou tire os filtros.'
+              : 'As vagas aparecem aqui assim que a primeira clínica ou hospital publicar. Se você tem uma equipe para montar, pode ser a sua.'}</p>
+            <a class="btn btn-soft" href="${VAGAS.length ? '/vagas' : '/cadastro'}">${VAGAS.length ? 'Limpar filtros' : 'Publicar uma vaga'}</a>
+          </div>`;
+        return;
+      }
+
+      lista.innerHTML = achadas.map(v => `
+        <article class="vg-card">
+          <span class="vg-selo">${ICO(Vagas.icone(v))}</span>
+          <div class="vg-meio">
+            <h2><a href="/vaga/${esc(v.slug)}">${esc(v.titulo)}</a></h2>
+            <div class="vg-quem">
+              <span>${ICO('hospital')} ${esc(v.empresa || v.clinica_nome)}</span>
+              <span>${ICO(v.modalidade === 'online' ? 'celular' : 'local')} ${esc(Vagas.onde(v))}</span>
+              ${v.jornada ? `<span>${ICO('relogio')} ${esc(v.jornada)}</span>` : ''}
+            </div>
+            ${v.resumo ? `<p class="vg-resumo">${esc(v.resumo)}</p>` : ''}
+            <div class="vg-tags">
+              <span class="vg-tag vinculo">${esc(Vagas.TIPOS[v.tipo] || v.tipo)}</span>
+              <span class="vg-tag">${esc(Vagas.MODALIDADES[v.modalidade] || v.modalidade)}</span>
+              ${v.especialidade ? `<span class="vg-tag">${esc(v.especialidade)}</span>` : ''}
+              ${v.posicoes > 1 ? `<span class="vg-tag">${v.posicoes} vagas</span>` : ''}
+            </div>
+          </div>
+          <div class="vg-dir">
+            <span class="vg-salario">${esc(Vagas.salario(v).valor)}<small>${esc(Vagas.salario(v).nota)}</small></span>
+            <a class="btn btn-primary btn-sm" href="/vaga/${esc(v.slug)}">Ver vaga</a>
+            <span class="vg-quando">publicada ${esc(Vagas.desdeQuando(v.criado_em))}</span>
+          </div>
+        </article>`).join('');
+    }
+
+    ['tipo', 'modalidade', 'cidade'].forEach(id => {
+      document.getElementById(id).addEventListener('change', e => {
+        if (id === 'tipo') tipo = e.target.value;
+        if (id === 'modalidade') modalidade = e.target.value;
+        if (id === 'cidade') cidade = e.target.value;
+        desenhar();
+      });
+    });
+    document.getElementById('busca').addEventListener('input', e => { termo = e.target.value.trim(); desenhar(); });
+
+    (async function carregar() {
+      try {
+        const d = await (await fetch('/api/public/vagas')).json();
+        VAGAS = d.vagas || [];
+        const sel = document.getElementById('cidade');
+        (d.cidades || []).forEach(c => {
+          const o = document.createElement('option');
+          o.value = c.cidade; o.textContent = `${c.cidade} (${c.n})`;
+          sel.appendChild(o);
+        });
+        // o quadro aceita link pronto: /vagas?tipo=plantao&cidade=pelotas-rs
+        const q = new URLSearchParams(location.search);
+        if (q.get('tipo')) { tipo = q.get('tipo'); document.getElementById('tipo').value = tipo; }
+        if (q.get('modalidade')) { modalidade = q.get('modalidade'); document.getElementById('modalidade').value = modalidade; }
+        desenhar();
+      } catch (e) {
+        lista.innerHTML = '<div class="vg-vazio">Não consegui carregar as vagas agora. Recarregue a página em instantes.</div>';
+      }
+    })();
+  </script>
+  <script src="/assets/js/logo.js?v=4"></script>
+  <script src="/assets/js/menu.js?v=3"></script>
+</body>
+</html>

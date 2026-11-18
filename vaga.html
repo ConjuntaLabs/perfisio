@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vaga — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}
+    .lp-header .logo{display:flex;align-items:center;overflow:hidden}
+    .lp-header .logo img,.lp-header .logo .marca{height:26px;width:auto;display:block}
+    @media (max-width:760px){.lp-header .logo img,.lp-header .logo .marca{height:19px}}
+    .lp-header .logo img{opacity:0;animation:logoReserva .4s .6s forwards}
+    html.logo-ok .lp-header .logo img{opacity:1;animation:none}
+    @keyframes logoReserva{to{opacity:1}}
+    @media (prefers-reduced-motion:reduce){.lp-header .logo img{opacity:1;animation:none}}</style>
+  <link rel="stylesheet" href="/assets/css/site.css">
+  <style>
+    .vg-topo { background: linear-gradient(180deg, #F0FAF7 0%, #fff 100%); padding: 34px 6vw 0; }
+    .vg-topo .dentro { max-width: 1060px; margin: 0 auto; }
+    .vg-volta { font-size: .82rem; color: var(--text-soft); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+    .vg-volta:hover { color: var(--primary-dark); }
+    .vg-cab { display: flex; gap: 18px; align-items: flex-start; margin-top: 18px; }
+    .vg-selo { width: 58px; height: 58px; border-radius: 15px; flex: none; display: grid; place-items: center;
+      background: var(--primary-soft); color: var(--primary-dark); }
+    .vg-selo .i { width: 27px; height: 27px; }
+    .vg-cab h1 { font-size: clamp(1.5rem, 3.4vw, 2.3rem); font-weight: 900; color: var(--ink); letter-spacing: -1px; line-height: 1.2; }
+    .vg-quem { font-size: .92rem; color: var(--text-soft); margin-top: 8px; display: flex; gap: 8px 18px; flex-wrap: wrap; }
+    .vg-quem span { display: inline-flex; align-items: center; gap: 7px; }
+    .vg-tags { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 16px; }
+    .vg-tag { font-size: .74rem; font-weight: 700; padding: 5px 12px; border-radius: 99px;
+      background: #fff; color: var(--text-soft); border: 1px solid var(--line); }
+    .vg-tag.vinculo { background: var(--primary-soft); color: var(--primary-dark); border-color: transparent; }
+    .vg-tag.fechada { background: var(--amber-soft); color: var(--amber); border-color: transparent; }
+
+    .vg-corpo { max-width: 1060px; margin: 0 auto; padding: 30px 6vw 60px;
+      display: grid; grid-template-columns: 1fr 350px; gap: 34px; align-items: start; }
+    .vg-bloco { margin-bottom: 30px; }
+    .vg-bloco h2 { font-size: 1.02rem; font-weight: 800; color: var(--ink); margin-bottom: 10px; }
+    .vg-bloco p, .vg-bloco li { font-size: .94rem; color: var(--text); line-height: 1.8; white-space: pre-line; }
+    .vg-bloco ul { padding-left: 20px; }
+
+    .vg-caixa { position: sticky; top: 92px; background: var(--card); border: 1px solid var(--line);
+      border-radius: 18px; padding: 24px; box-shadow: var(--shadow-lg); }
+    .vg-valor { font-size: 1.5rem; font-weight: 900; color: var(--ink); letter-spacing: -.6px; }
+    .vg-valor small { display: block; font-size: .78rem; font-weight: 600; color: var(--text-soft); letter-spacing: 0; margin-top: 2px; }
+    .vg-linhas { margin: 18px 0; border-top: 1px solid var(--line); }
+    .vg-linha { display: flex; gap: 12px; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: .86rem; }
+    .vg-linha .i { color: var(--primary); margin-top: 2px; }
+    .vg-linha b { color: var(--ink); font-weight: 700; display: block; }
+    .vg-linha span { color: var(--text-soft); }
+    .vg-caixa .btn { width: 100%; justify-content: center; padding: 13px; }
+    .vg-aviso { font-size: .78rem; color: var(--text-soft); line-height: 1.6; margin-top: 12px; text-align: center; }
+
+    .form-vaga { display: grid; gap: 12px; }
+    .form-vaga .field label { font-size: .8rem; font-weight: 700; color: var(--ink); display: block; margin-bottom: 5px; }
+    .form-vaga input, .form-vaga textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px;
+      padding: 11px 13px; font-family: inherit; font-size: .9rem; color: var(--text); background: #fff; }
+    .form-vaga input:focus, .form-vaga textarea:focus { outline: none; border-color: var(--primary); }
+    .form-vaga textarea { min-height: 96px; resize: vertical; }
+    .form-vaga .dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .vg-pronto { text-align: center; padding: 10px 0; }
+    .vg-pronto .i { width: 42px; height: 42px; color: var(--green); }
+    .vg-pronto h3 { font-size: 1.1rem; font-weight: 800; color: var(--ink); margin: 12px 0 6px; }
+    .vg-pronto p { font-size: .88rem; color: var(--text-soft); line-height: 1.65; }
+    .vg-codigo { display: inline-block; background: var(--bg); border: 1px dashed var(--line); border-radius: 10px;
+      padding: 9px 16px; font-weight: 800; letter-spacing: 1.5px; color: var(--ink); margin: 14px 0; }
+
+    @media (max-width: 900px) {
+      .vg-corpo { grid-template-columns: 1fr; }
+      .vg-caixa { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <header class="lp-header lp-loja">
+    <a class="logo" href="/"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio" width="152" height="26"></a>
+    <nav>
+      <a href="/#profissionais">Encontrar fisioterapeuta</a>
+      <a href="/site-para-fisioterapeutas">Para fisioterapeutas</a>
+      <a href="/vagas" style="color:var(--ink);">Vagas</a>
+      <a href="/cursos">Cursos</a>
+      <a href="/loja">Loja</a>
+      <a href="/login.html" class="btn btn-ghost btn-sm">Entrar</a>
+      <a href="/cadastro" class="btn btn-primary btn-sm">Criar perfil grátis</a>
+    </nav>
+  </header>
+
+  <div id="pagina">
+    <section class="vg-topo"><div class="dentro" style="padding-bottom:30px;">Carregando a vaga...</div></section>
+  </div>
+
+  <footer class="lp-footer">
+    <b style="color:var(--ink);">PerFisio</b> © 2026 — Conectando pacientes e fisioterapeutas ·
+    <a href="/">Início</a> · <a href="/vagas">Vagas</a> · <a href="/cursos">Cursos</a> ·
+    <a href="/loja">Loja</a> · <a href="/planos.html">Planos</a> · <a href="/blog">Blog</a>
+  </footer>
+
+  <script src="/assets/js/app.js"></script>
+  <script src="/assets/js/vagas-comum.js?v=1"></script>
+  <script>
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const ICO = n => `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#${n}"></use></svg>`;
+    const SLUG = (window.__PF && window.__PF.vaga && window.__PF.vaga.slug) || location.pathname.split('/').filter(Boolean).pop();
+    const dataBR = iso => new Date(iso + 'T12:00:00').toLocaleDateString('pt-BR');
+    /* quem já se candidatou uma vez não redigita tudo na próxima vaga
+       (fica só neste navegador, e some junto com os dados do site) */
+    const LEMBRADO = 'pf_candidato';
+    const lembrar = d => { try { localStorage.setItem(LEMBRADO, JSON.stringify(d)); } catch (e) {} };
+    const lembrado = () => { try { return JSON.parse(localStorage.getItem(LEMBRADO) || '{}'); } catch (e) { return {}; } };
+    const pagina = document.getElementById('pagina');
+    let VAGA = (window.__PF && window.__PF.vaga) || null;
+
+    function lista(texto) {
+      const linhas = String(texto || '').split('\n').map(l => l.replace(/^[-•*]\s*/, '').trim()).filter(Boolean);
+      if (linhas.length < 2) return `<p>${esc(texto)}</p>`;
+      return `<ul>${linhas.map(l => `<li>${esc(l)}</li>`).join('')}</ul>`;
+    }
+
+    function desenhar() {
+      const v = VAGA;
+      const s = Vagas.salario(v);
+      const quem = v.empresa || v.clinica_nome;
+      document.title = `${v.titulo} — ${quem} | Vagas PerFisio`;
+
+      pagina.innerHTML = `
+        <section class="vg-topo">
+          <div class="dentro">
+            <a class="vg-volta" href="/vagas">${ICO('voltar')} Todas as vagas</a>
+            <div class="vg-cab">
+              <span class="vg-selo">${ICO(Vagas.icone(v))}</span>
+              <div>
+                <h1>${esc(v.titulo)}</h1>
+                <div class="vg-quem">
+                  <span>${ICO('hospital')} ${esc(quem)}</span>
+                  <span>${ICO(v.modalidade === 'online' ? 'celular' : 'local')} ${esc(Vagas.onde(v))}</span>
+                  <span>${ICO('agenda')} publicada ${esc(Vagas.desdeQuando(v.criado_em))}</span>
+                </div>
+                <div class="vg-tags">
+                  <span class="vg-tag vinculo">${esc(Vagas.TIPOS[v.tipo] || v.tipo)}</span>
+                  <span class="vg-tag">${esc(Vagas.MODALIDADES[v.modalidade] || v.modalidade)}</span>
+                  ${v.especialidade ? `<span class="vg-tag">${esc(v.especialidade)}</span>` : ''}
+                  ${v.jornada ? `<span class="vg-tag">${esc(v.jornada)}</span>` : ''}
+                  ${v.posicoes > 1 ? `<span class="vg-tag">${v.posicoes} vagas</span>` : ''}
+                  ${v.aberta ? '' : '<span class="vg-tag fechada">candidaturas encerradas</span>'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="vg-corpo">
+          <div>
+            ${v.resumo ? `<div class="vg-bloco"><p style="font-size:1.02rem;color:var(--text);">${esc(v.resumo)}</p></div>` : ''}
+            ${v.descricao ? `<div class="vg-bloco"><h2>Sobre a vaga</h2><p>${esc(v.descricao)}</p></div>` : ''}
+            ${v.requisitos ? `<div class="vg-bloco"><h2>O que a vaga pede</h2>${lista(v.requisitos)}</div>` : ''}
+            ${v.beneficios ? `<div class="vg-bloco"><h2>O que a vaga oferece</h2>${lista(v.beneficios)}</div>` : ''}
+            <div class="vg-bloco">
+              <h2>Quem está contratando</h2>
+              <p>${esc(quem)}${v.empresa && v.empresa !== v.clinica_nome ? ` — vaga divulgada por ${esc(v.clinica_nome)}` : ''}${
+                v.clinica_slug ? ` · <a href="/clinica/${esc(v.clinica_slug)}" style="color:var(--primary-dark);font-weight:600;">ver o perfil</a>` : ''}</p>
+            </div>
+          </div>
+
+          <aside class="vg-caixa" id="caixa">
+            <div class="vg-valor">${esc(s.valor)}<small>${esc(s.nota)}</small></div>
+            <div class="vg-linhas">
+              <div class="vg-linha">${ICO('maleta')}<span><b>${esc(Vagas.TIPOS[v.tipo] || v.tipo)}</b>vínculo</span></div>
+              <div class="vg-linha">${ICO(v.modalidade === 'online' ? 'celular' : 'local')}<span><b>${esc(Vagas.MODALIDADES[v.modalidade] || v.modalidade)}</b>${esc(Vagas.onde(v))}</span></div>
+              ${v.jornada ? `<div class="vg-linha">${ICO('relogio')}<span><b>${esc(v.jornada)}</b>jornada</span></div>` : ''}
+              ${v.local ? `<div class="vg-linha">${ICO('casa')}<span><b>${esc(v.local)}</b>local de trabalho</span></div>` : ''}
+              ${v.expira_em ? `<div class="vg-linha">${ICO('ampulheta')}<span><b>${dataBR(v.expira_em)}</b>último dia para se candidatar</span></div>` : ''}
+            </div>
+            <div id="acao"></div>
+          </aside>
+        </div>`;
+
+      desenharAcao();
+    }
+
+    function desenharAcao() {
+      const v = VAGA;
+      const box = document.getElementById('acao');
+      if (!v.aberta) {
+        box.innerHTML = `<p class="vg-aviso">Esta vaga não está mais recebendo candidaturas.
+          <a href="/vagas" style="color:var(--primary-dark);font-weight:700;">Veja as outras vagas abertas</a>.</p>`;
+        return;
+      }
+      if (v.link_externo) {
+        box.innerHTML = `
+          <a class="btn btn-primary" href="${esc(v.link_externo)}" target="_blank" rel="noopener">Candidatar-se ${ICO('externo')}</a>
+          <p class="vg-aviso">A candidatura desta vaga acontece no site de quem contrata.</p>`;
+        return;
+      }
+      box.innerHTML = `
+        <form class="form-vaga" id="form">
+          <div class="field"><label for="cNome">Seu nome *</label><input type="text" id="cNome" autocomplete="name" required></div>
+          <div class="field"><label for="cEmail">E-mail *</label><input type="email" id="cEmail" autocomplete="email" required></div>
+          <div class="dupla">
+            <div class="field"><label for="cTel">WhatsApp *</label><input type="tel" id="cTel" autocomplete="tel" placeholder="(53) 99999-9999" required></div>
+            <div class="field"><label for="cCrefito">CREFITO</label><input type="text" id="cCrefito" placeholder="CREFITO-5 123456-F"></div>
+          </div>
+          <div class="field"><label for="cCidade">Sua cidade</label><input type="text" id="cCidade" placeholder="Ex.: Pelotas/RS"></div>
+          <div class="field"><label for="cPerfil">Seu perfil ou currículo (link)</label>
+            <input type="url" id="cPerfil" placeholder="perfisio.com.br/fisioterapeuta/voce"></div>
+          <div class="field"><label for="cMsg">Por que você?</label>
+            <textarea id="cMsg" placeholder="Conte em poucas linhas sua experiência com o que a vaga pede."></textarea></div>
+          <button class="btn btn-primary" type="submit" id="btnEnviar">Candidatar-se</button>
+        </form>
+        <p class="vg-aviso">Seus dados vão só para quem publicou a vaga. Você recebe um código para acompanhar a resposta.</p>`;
+
+      document.getElementById('form').addEventListener('submit', enviar);
+      const eu = lembrado();
+      ['cNome', 'cEmail', 'cTel', 'cCrefito', 'cCidade', 'cPerfil'].forEach(id => {
+        if (eu[id]) document.getElementById(id).value = eu[id];
+      });
+    }
+
+    async function enviar(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btnEnviar');
+      const val = id => document.getElementById(id).value.trim();
+      const corpo = {
+        nome: val('cNome'), email: val('cEmail'), telefone: val('cTel'), crefito: val('cCrefito'),
+        cidade: val('cCidade'), perfil_url: val('cPerfil'), mensagem: val('cMsg'),
+      };
+      btn.disabled = true; btn.textContent = 'Enviando...';
+      try {
+        const r = await fetch(`/api/public/vagas/${encodeURIComponent(SLUG)}/candidatar`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          // já candidatada: em vez de erro seco, leva para o acompanhamento
+          if (d.candidatura) { location.href = `/candidatura/${d.candidatura}`; return; }
+          throw new Error(d.erro || 'Não consegui enviar sua candidatura');
+        }
+        lembrar({ cNome: corpo.nome, cEmail: corpo.email, cTel: corpo.telefone,
+                  cCrefito: corpo.crefito, cCidade: corpo.cidade, cPerfil: corpo.perfil_url });
+        pronto(d.codigo);
+      } catch (erro) {
+        App.toast(erro.message, 'error');
+        btn.disabled = false; btn.textContent = 'Candidatar-se';
+      }
+    }
+
+    function pronto(codigo) {
+      document.getElementById('caixa').innerHTML = `
+        <div class="vg-pronto">
+          ${ICO('confirmado')}
+          <h3>Candidatura enviada</h3>
+          <p>${esc(VAGA.empresa || VAGA.clinica_nome)} já recebeu seus dados. Guarde o código abaixo
+             para acompanhar a resposta.</p>
+          <div class="vg-codigo">${esc(codigo)}</div>
+          <a class="btn btn-primary" href="/candidatura/${esc(codigo)}">Acompanhar candidatura</a>
+          <p class="vg-aviso"><a href="/vagas" style="color:var(--primary-dark);font-weight:700;">Ver outras vagas abertas</a></p>
+        </div>`;
+      window.scrollTo({ top: document.getElementById('caixa').offsetTop - 110, behavior: 'smooth' });
+    }
+
+    (async function carregar() {
+      if (!VAGA) {
+        try {
+          const r = await fetch('/api/public/vagas/' + encodeURIComponent(SLUG));
+          if (!r.ok) throw new Error('não achei');
+          VAGA = await r.json();
+        } catch (e) {
+          pagina.innerHTML = `<section class="vg-topo"><div class="dentro" style="padding:40px 0 60px;text-align:center;">
+            <b style="display:block;color:var(--ink);font-size:1.1rem;margin-bottom:8px;">Vaga não encontrada</b>
+            <span style="color:var(--text-soft);">Ela pode ter sido encerrada.
+              <a href="/vagas" style="color:var(--primary-dark);font-weight:700;">Veja as vagas abertas</a>.</span>
+          </div></section>`;
+          return;
+        }
+      }
+      desenhar();
+    })();
+  </script>
+  <script src="/assets/js/logo.js?v=4"></script>
+  <script src="/assets/js/menu.js?v=3"></script>
+</body>
+</html>

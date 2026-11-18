@@ -413,6 +413,46 @@ CREATE TABLE IF NOT EXISTS presencas (
   atualizado_em timestamptz NOT NULL DEFAULT now(),
   UNIQUE (encontro_id, inscricao_id)
 );
+-- VAGAS: clínica, hospital, home care ou estúdio publica oportunidades e recebe
+-- candidaturas de fisioterapeutas. Não é add-on: toda clínica ativa pode usar —
+-- quanto mais vaga no quadro, mais o diretório vale para quem procura trabalho.
+CREATE TABLE IF NOT EXISTS vagas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  clinica_id uuid NOT NULL REFERENCES clinicas(id) ON DELETE CASCADE,
+  slug text UNIQUE,
+  titulo text NOT NULL,
+  tipo text NOT NULL DEFAULT 'clt',             -- clt | pj | freela | plantao | estagio | temporario | voluntario
+  resumo text, descricao text, requisitos text, beneficios text,
+  especialidade text,
+  modalidade text NOT NULL DEFAULT 'presencial', -- presencial | domiciliar | hibrido | online
+  local text, cidade text, bairro text,
+  jornada text,                                  -- "40h semanais", "plantões 12x36"
+  salario_min numeric(10,2), salario_max numeric(10,2),
+  salario_periodo text NOT NULL DEFAULT 'mes',   -- hora | plantao | dia | mes | atendimento
+  salario_combinar boolean NOT NULL DEFAULT false,
+  posicoes int NOT NULL DEFAULT 1,
+  empresa text,                                  -- quando a vaga é de outra instituição (hospital, home care)
+  contato_email text, contato_whatsapp text, link_externo text,
+  expira_em date,                                -- some do quadro sozinha depois desta data
+  publicado boolean NOT NULL DEFAULT false,
+  aberta boolean NOT NULL DEFAULT true,          -- recebendo candidaturas
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS vagas_clinica_idx ON vagas (clinica_id, criado_em DESC);
+CREATE TABLE IF NOT EXISTS candidaturas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  vaga_id uuid NOT NULL REFERENCES vagas(id) ON DELETE CASCADE,
+  fisio_id uuid REFERENCES fisios(id) ON DELETE SET NULL,
+  conta_id uuid REFERENCES contas(id) ON DELETE SET NULL,
+  codigo text NOT NULL UNIQUE,
+  nome text NOT NULL, email text NOT NULL, telefone text, crefito text,
+  cidade text, perfil_url text, mensagem text,
+  status text NOT NULL DEFAULT 'nova',           -- nova | triagem | entrevista | aprovada | recusada
+  visto_em timestamptz,
+  criado_em timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS candidaturas_vaga_email_uniq ON candidaturas (vaga_id, lower(email));
+CREATE INDEX IF NOT EXISTS candidaturas_vaga_idx ON candidaturas (vaga_id, criado_em DESC);
 -- apresentações do PerFisio na agenda da Mari (página /fale-com-a-mari)
 CREATE TABLE IF NOT EXISTS demos (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1533,7 +1573,8 @@ const SLUGS_RESERVADOS = new Set(['api', 'assets', 'admin', 'app', 'www', 'login
   'conta', 'contas', 'perfisio', 'perfis', 'perfil', 'perfil-curto', 'fisioterapeuta', 'fisioterapeutas', 'fisio', 'clinica',
   'clinicas', 'blog', 'planos', 'precos', 'agenda', 'agendar', 'reserva', 'reservas', 'suporte', 'ajuda', 'contato', 'sobre',
   'termos', 'privacidade', 'sitemap', 'robots', 'favicon', 'verificar-email', 'cidade', 'cidades', 'busca', 'buscar', 'site',
-  'novo', 'nova', 'editar', 'config', 'configuracoes', 'dashboard']);
+  'novo', 'nova', 'editar', 'config', 'configuracoes', 'dashboard',
+  'vaga', 'vagas', 'candidatura', 'candidaturas', 'curso', 'cursos', 'inscricao', 'loja']);
 
 function validarUsername(bruto) {
   const s = String(bruto || '').trim().toLowerCase();
@@ -3255,6 +3296,248 @@ app.get('/api/conta/cursos', authConta, async (req, res) => {
   res.json(r.rows);
 });
 
+/* ============ VAGAS ============
+   A clínica publica a oportunidade (emprego, plantão, freela, estágio — dela ou
+   de um hospital parceiro) e recebe as candidaturas aqui dentro. Quem se
+   candidata não precisa de conta: acompanha pelo código, como na inscrição de
+   curso. Vaga com data de validade sai do quadro sozinha. */
+const TIPOS_VAGA = ['clt', 'pj', 'freela', 'plantao', 'estagio', 'temporario', 'voluntario'];
+const MODALIDADES_VAGA = ['presencial', 'domiciliar', 'hibrido', 'online'];
+const PERIODOS_VAGA = ['hora', 'plantao', 'dia', 'mes', 'atendimento'];
+const STATUS_CANDIDATURA = ['nova', 'triagem', 'entrevista', 'aprovada', 'recusada'];
+
+const VAGA_COLS = `v.id, v.clinica_id, v.slug, v.titulo, v.tipo, v.resumo, v.descricao, v.requisitos,
+  v.beneficios, v.especialidade, v.modalidade, v.local, v.cidade, v.bairro, v.jornada,
+  v.salario_min::float8 AS salario_min, v.salario_max::float8 AS salario_max, v.salario_periodo,
+  v.salario_combinar, v.posicoes, v.empresa, v.contato_email, v.contato_whatsapp, v.link_externo,
+  to_char(v.expira_em, 'YYYY-MM-DD') AS expira_em, v.publicado, v.aberta, v.criado_em`;
+// o quadro público só mostra vaga publicada, de clínica ativa e dentro do prazo
+const VAGA_PUBLICA = `v.publicado AND cl.ativa AND cl.excluida_em IS NULL
+  AND (v.expira_em IS NULL OR v.expira_em >= current_date)`;
+const CANDIDATOS = `(SELECT count(*)::int FROM candidaturas k WHERE k.vaga_id = v.id)`;
+
+const CAMPOS_VAGA = ['titulo', 'tipo', 'resumo', 'descricao', 'requisitos', 'beneficios', 'especialidade',
+  'modalidade', 'local', 'cidade', 'bairro', 'jornada', 'salario_min', 'salario_max', 'salario_periodo',
+  'salario_combinar', 'posicoes', 'empresa', 'contato_email', 'contato_whatsapp', 'link_externo',
+  'expira_em', 'publicado', 'aberta'];
+
+function valorDeVaga(campo, v) {
+  if (campo === 'tipo') return TIPOS_VAGA.includes(v) ? v : 'clt';
+  if (campo === 'modalidade') return MODALIDADES_VAGA.includes(v) ? v : 'presencial';
+  if (campo === 'salario_periodo') return PERIODOS_VAGA.includes(v) ? v : 'mes';
+  if (campo === 'salario_min' || campo === 'salario_max') return v === '' || v == null ? null : Number(v) || null;
+  if (campo === 'posicoes') return Math.max(parseInt(v, 10) || 1, 1);
+  if (campo === 'salario_combinar' || campo === 'publicado' || campo === 'aberta') return !!v;
+  if (campo === 'cidade') return normalizarCidadeOpcional(v);
+  if (campo === 'expira_em') return /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? v : null;
+  const texto = String(v == null ? '' : v).trim();
+  return texto || null;
+}
+
+async function slugDeVaga(titulo, cidade) {
+  const base = slugificar([titulo, cidade].filter(Boolean).join(' ')).slice(0, 70) || 'vaga';
+  const dup = await pool.query('SELECT 1 FROM vagas WHERE slug = $1', [base]);
+  return dup.rowCount ? `${base}-${Date.now().toString(36).slice(-4)}` : base;
+}
+
+/* ---- painel da clínica ---- */
+app.get('/api/vagas', auth, async (req, res) => {
+  const r = await pool.query(`
+    SELECT ${VAGA_COLS}, ${CANDIDATOS} AS candidatos,
+           (SELECT count(*)::int FROM candidaturas k WHERE k.vaga_id = v.id AND k.status = 'nova') AS novas,
+           (SELECT count(*)::int FROM candidaturas k WHERE k.vaga_id = v.id AND k.status = 'entrevista') AS entrevistas,
+           (SELECT max(k.criado_em) FROM candidaturas k WHERE k.vaga_id = v.id) AS ultima_candidatura
+    FROM vagas v WHERE v.clinica_id = $1 ORDER BY v.criado_em DESC`, [req.auth.cid]);
+  res.json({ vagas: r.rows });
+});
+
+app.post('/api/vagas', auth, async (req, res) => {
+  const b = req.body || {};
+  const titulo = String(b.titulo || '').trim();
+  if (titulo.length < 4) return res.status(400).json({ erro: 'Dê um título à vaga' });
+  const campos = CAMPOS_VAGA.filter(c => c in b || c === 'titulo');
+  const vals = [req.auth.cid, await slugDeVaga(titulo, b.cidade)];
+  campos.forEach(c => vals.push(valorDeVaga(c, c === 'titulo' ? titulo : b[c])));
+  const r = await pool.query(`
+    INSERT INTO vagas (clinica_id, slug, ${campos.join(', ')})
+    VALUES ($1, $2, ${campos.map((_, i) => '$' + (i + 3)).join(', ')})
+    RETURNING id, slug`, vals);
+  res.status(201).json(r.rows[0]);
+});
+
+app.put('/api/vagas/:id', auth, async (req, res) => {
+  const b = req.body || {};
+  const sets = []; const vals = [req.params.id, req.auth.cid];
+  for (const campo of CAMPOS_VAGA) {
+    if (!(campo in b)) continue;
+    vals.push(valorDeVaga(campo, b[campo]));
+    sets.push(`${campo}=$${vals.length}`);
+  }
+  if (!sets.length) return res.status(400).json({ erro: 'Nada para alterar' });
+  const r = await pool.query(
+    `UPDATE vagas SET ${sets.join(', ')} WHERE id=$1 AND clinica_id=$2 RETURNING id`, vals);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Vaga não encontrada' });
+  res.json({ ok: true });
+});
+
+app.delete('/api/vagas/:id', auth, async (req, res) => {
+  const inscritos = await pool.query('SELECT count(*)::int AS n FROM candidaturas WHERE vaga_id=$1', [req.params.id]);
+  if (inscritos.rows[0].n) {
+    return res.status(409).json({
+      erro: `Esta vaga já tem ${inscritos.rows[0].n} candidato(s). Feche as candidaturas ou despublique em vez de excluir.`,
+    });
+  }
+  const r = await pool.query('DELETE FROM vagas WHERE id=$1 AND clinica_id=$2', [req.params.id, req.auth.cid]);
+  res.json({ removidos: r.rowCount });
+});
+
+app.get('/api/vagas/:id/candidaturas', auth, async (req, res) => {
+  const vaga = await pool.query(
+    `SELECT v.id, v.titulo, v.slug, v.tipo FROM vagas v WHERE v.id=$1 AND v.clinica_id=$2`,
+    [req.params.id, req.auth.cid]);
+  if (!vaga.rowCount) return res.status(404).json({ erro: 'Vaga não encontrada' });
+  const r = await pool.query(`
+    SELECT k.id, k.codigo, k.nome, k.email, k.telefone, k.crefito, k.cidade, k.perfil_url, k.mensagem,
+           k.status, k.visto_em, k.criado_em, f.slug AS fisio_slug
+    FROM candidaturas k LEFT JOIN fisios f ON f.id = k.fisio_id
+    WHERE k.vaga_id = $1 ORDER BY k.criado_em DESC`, [req.params.id]);
+  // abrir a lista já marca como vistas as que ninguém tinha aberto
+  await pool.query(`UPDATE candidaturas SET visto_em = now() WHERE vaga_id = $1 AND visto_em IS NULL`, [req.params.id]);
+  res.json({ vaga: vaga.rows[0], candidaturas: r.rows });
+});
+
+app.put('/api/candidaturas/:id', auth, async (req, res) => {
+  const status = String((req.body || {}).status || '');
+  if (!STATUS_CANDIDATURA.includes(status)) return res.status(400).json({ erro: 'Situação inválida' });
+  const r = await pool.query(`
+    UPDATE candidaturas k SET status = $3
+    WHERE k.id = $1 AND EXISTS (SELECT 1 FROM vagas v WHERE v.id = k.vaga_id AND v.clinica_id = $2)
+    RETURNING k.id`, [req.params.id, req.auth.cid, status]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Candidatura não encontrada' });
+  res.json({ ok: true });
+});
+
+/* ---- quadro público ---- */
+app.get('/api/public/vagas', async (req, res) => {
+  const where = [VAGA_PUBLICA]; const vals = [];
+  if (req.query.cidade) {
+    // o filtro chega como slug (pelotas-rs): acha a cidade real antes de comparar
+    const todas = await pool.query(`SELECT DISTINCT v.cidade FROM vagas v JOIN clinicas cl ON cl.id = v.clinica_id
+                                    WHERE ${VAGA_PUBLICA} AND coalesce(v.cidade, '') <> ''`);
+    const alvo = todas.rows.map(x => x.cidade).find(x => slugificar(x) === slugificar(req.query.cidade));
+    vals.push(alvo || '\u0000'); where.push(`v.cidade = $${vals.length}`);
+  }
+  if (TIPOS_VAGA.includes(req.query.tipo)) { vals.push(req.query.tipo); where.push(`v.tipo = $${vals.length}`); }
+  if (MODALIDADES_VAGA.includes(req.query.modalidade)) {
+    vals.push(req.query.modalidade); where.push(`v.modalidade = $${vals.length}`);
+  }
+  if (req.query.q) {
+    vals.push('%' + String(req.query.q).trim() + '%');
+    where.push(`(v.titulo ILIKE $${vals.length} OR v.resumo ILIKE $${vals.length}
+                 OR v.especialidade ILIKE $${vals.length} OR v.empresa ILIKE $${vals.length})`);
+  }
+  const r = await pool.query(`
+    SELECT ${VAGA_COLS}, cl.nome AS clinica_nome, cl.slug AS clinica_slug, ${CANDIDATOS} AS candidatos
+    FROM vagas v JOIN clinicas cl ON cl.id = v.clinica_id
+    WHERE ${where.join(' AND ')}
+    ORDER BY v.criado_em DESC LIMIT 200`, vals);
+  const cidades = await pool.query(`
+    SELECT v.cidade, count(*)::int AS n FROM vagas v JOIN clinicas cl ON cl.id = v.clinica_id
+    WHERE ${VAGA_PUBLICA} AND coalesce(v.cidade, '') <> '' GROUP BY v.cidade ORDER BY n DESC, v.cidade`);
+  const tipos = await pool.query(`
+    SELECT v.tipo, count(*)::int AS n FROM vagas v JOIN clinicas cl ON cl.id = v.clinica_id
+    WHERE ${VAGA_PUBLICA} GROUP BY v.tipo`);
+  res.json({ vagas: r.rows, cidades: cidades.rows, tipos: tipos.rows });
+});
+
+app.get('/api/public/vagas/:slug', async (req, res) => {
+  const r = await pool.query(`
+    SELECT ${VAGA_COLS}, cl.nome AS clinica_nome, cl.slug AS clinica_slug, cl.telefone AS clinica_telefone
+    FROM vagas v JOIN clinicas cl ON cl.id = v.clinica_id
+    WHERE v.slug = $1 AND ${VAGA_PUBLICA}`, [req.params.slug]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Vaga não encontrada' });
+  res.json(r.rows[0]);
+});
+
+app.post('/api/public/vagas/:slug/candidatar', async (req, res) => {
+  const b = req.body || {};
+  const r = await pool.query(`
+    SELECT v.id, v.titulo, v.slug, v.clinica_id, v.aberta, v.empresa, cl.nome AS clinica_nome
+    FROM vagas v JOIN clinicas cl ON cl.id = v.clinica_id
+    WHERE v.slug = $1 AND ${VAGA_PUBLICA}`, [req.params.slug]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Vaga não encontrada' });
+  const vaga = r.rows[0];
+  if (!vaga.aberta) return res.status(409).json({ erro: 'Esta vaga não está mais recebendo candidaturas' });
+
+  const nome = String(b.nome || '').trim();
+  const email = String(b.email || '').trim().toLowerCase();
+  const telefone = String(b.telefone || '').trim();
+  if (nome.length < 3) return res.status(400).json({ erro: 'Informe seu nome completo' });
+  if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)) return res.status(400).json({ erro: 'Informe um e-mail válido' });
+  if (!/^\d{10,13}$/.test(telefone.replace(/\D/g, ''))) return res.status(400).json({ erro: 'Informe um telefone com DDD' });
+
+  const jaTem = await pool.query(
+    'SELECT codigo FROM candidaturas WHERE vaga_id=$1 AND lower(email)=$2', [vaga.id, email]);
+  if (jaTem.rowCount) {
+    return res.status(409).json({
+      erro: 'Você já se candidatou a esta vaga.',
+      codigo: jaTem.rows[0].codigo, candidatura: jaTem.rows[0].codigo,
+    });
+  }
+
+  // se a pessoa tem perfil público no PerFisio, a clínica vê o perfil junto
+  const perfil = String(b.perfil_url || '').trim();
+  const apelido = (perfil.match(/\/fisioterapeuta\/([a-z0-9-]+)/i) || [])[1];
+  const fisio = apelido
+    ? await pool.query('SELECT id FROM fisios WHERE slug = $1 AND publico AND excluido_em IS NULL', [apelido])
+    : { rowCount: 0 };
+
+  let candidatura;
+  for (let i = 0; i < 5 && !candidatura; i++) {
+    const codigo = 'VAG-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+    const ins = await pool.query(`
+      INSERT INTO candidaturas (vaga_id, fisio_id, conta_id, codigo, nome, email, telefone, crefito,
+        cidade, perfil_url, mensagem)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (codigo) DO NOTHING
+      RETURNING id, codigo, status`,
+      [vaga.id, fisio.rowCount ? fisio.rows[0].id : null, contaDoAluno(req), codigo, nome, email, telefone,
+        String(b.crefito || '').trim() || null, normalizarCidadeOpcional(b.cidade),
+        perfil || null, String(b.mensagem || '').trim() || null]);
+    if (ins.rowCount) candidatura = ins.rows[0];
+  }
+  if (!candidatura) return res.status(500).json({ erro: 'Não foi possível gerar o código da candidatura' });
+
+  await notificar({
+    cid: vaga.clinica_id, tipo: 'info', titulo: `Candidatura para ${vaga.titulo}`,
+    texto: `${nome}${b.crefito ? ' · ' + String(b.crefito).trim() : ''}`,
+    link: `/app/vagas.html?vaga=${vaga.slug}`,
+  });
+
+  res.status(201).json({ codigo: candidatura.codigo, status: candidatura.status });
+});
+
+// acompanhamento do candidato, pelo código (sem senha)
+app.get('/api/public/candidatura/:codigo', async (req, res) => {
+  const r = await pool.query(`
+    SELECT k.codigo, k.nome, k.email, k.telefone, k.crefito, k.cidade, k.mensagem, k.status, k.criado_em,
+           v.titulo, v.slug, v.tipo, v.modalidade, v.cidade AS vaga_cidade, v.local, v.empresa,
+           v.aberta, v.publicado, cl.nome AS clinica_nome
+    FROM candidaturas k JOIN vagas v ON v.id = k.vaga_id JOIN clinicas cl ON cl.id = v.clinica_id
+    WHERE upper(k.codigo) = upper($1)`, [req.params.codigo]);
+  if (!r.rowCount) return res.status(404).json({ erro: 'Candidatura não encontrada' });
+  res.json(r.rows[0]);
+});
+
+// "minhas candidaturas" de quem entra com a conta do PerFisio
+app.get('/api/conta/candidaturas', authConta, async (req, res) => {
+  const r = await pool.query(`
+    SELECT k.codigo, k.status, k.criado_em, v.titulo, v.slug, v.tipo, v.cidade, v.empresa, cl.nome AS clinica_nome
+    FROM candidaturas k JOIN vagas v ON v.id = k.vaga_id JOIN clinicas cl ON cl.id = v.clinica_id
+    WHERE k.conta_id = $1 OR lower(k.email) = (SELECT lower(email) FROM contas WHERE id = $1)
+    ORDER BY k.criado_em DESC`, [req.conta]);
+  res.json(r.rows);
+});
+
 /* ============ APRESENTAÇÃO COM A MARI ============
    /fale-com-a-mari: o fisioterapeuta escolhe um horário na agenda da Mari e
    recebe uma conversa de 30 minutos por vídeo. Agenda própria e simples —
@@ -4439,12 +4722,13 @@ const POSTS = [
 
 /* o WordPress usava barra no fim; manda pra URL canônica sem barra
    (senão os links relativos da página quebram e o Google vê duas URLs) */
-const ROTAS_CONTEUDO = new Set(['/site-para-fisioterapeutas', '/blog', '/loja', '/fale-com-a-mari', '/cursos', ...POSTS.map(p => `/blog/${p.slug}`)]);
+const ROTAS_CONTEUDO = new Set(['/site-para-fisioterapeutas', '/blog', '/loja', '/fale-com-a-mari', '/cursos', '/vagas', ...POSTS.map(p => `/blog/${p.slug}`)]);
 app.get(/^\/[a-z0-9-]+(\/[a-z0-9-]+)?\/$/, (req, res, next) => {
   const semBarra = req.path.slice(0, -1);
   // as páginas de produto são dinâmicas: /loja/{slug}/ também vai para a URL sem barra
   const conhecida = ROTAS_CONTEUDO.has(semBarra) || semBarra.startsWith('/loja/')
-    || semBarra.startsWith('/curso/') || semBarra.startsWith('/inscricao/');
+    || semBarra.startsWith('/curso/') || semBarra.startsWith('/inscricao/')
+    || semBarra.startsWith('/vaga/') || semBarra.startsWith('/candidatura/');
   return conhecida ? res.redirect(301, semBarra) : next();
 });
 
@@ -4496,6 +4780,97 @@ app.get('/curso/:slug', async (req, res, next) => {
           offers: { '@type': 'Offer', price: curso.preco, priceCurrency: 'BRL', url, category: 'Paid' },
         } : {}),
       },
+    });
+  } catch (e) { next(e); }
+});
+
+/* ---------- VAGAS ---------- */
+// o Google Empregos lê JobPosting; os nomes dos vínculos daqui viram os de lá
+const EMPREGO_SCHEMA = {
+  clt: 'FULL_TIME', pj: 'CONTRACTOR', freela: 'CONTRACTOR', plantao: 'PER_DIEM',
+  estagio: 'INTERN', temporario: 'TEMPORARY', voluntario: 'VOLUNTEER',
+};
+const PERIODO_SCHEMA = { hora: 'HOUR', plantao: 'DAY', dia: 'DAY', mes: 'MONTH', atendimento: 'HOUR' };
+
+app.get('/vagas', async (req, res, next) => {
+  try {
+    await servirSeo(res, 'vagas.html', {
+      titulo: 'Vagas para fisioterapeutas — emprego, plantão e freela | PerFisio',
+      descricao: 'Vagas de fisioterapia publicadas por clínicas, hospitais e home cares: CLT, PJ, plantão, '
+        + 'freela e estágio. Candidate-se em um minuto, sem currículo em PDF.',
+      url: urlPublica(req, '/vagas'),
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'CollectionPage', inLanguage: 'pt-BR',
+        name: 'Vagas para fisioterapeutas', url: urlPublica(req, '/vagas'),
+      },
+    });
+  } catch (e) { next(e); }
+});
+
+app.get('/vaga/:slug', async (req, res, next) => {
+  try {
+    const r = await pool.query(`
+      SELECT ${VAGA_COLS}, cl.nome AS clinica_nome
+      FROM vagas v JOIN clinicas cl ON cl.id = v.clinica_id
+      WHERE v.slug = $1 AND ${VAGA_PUBLICA}`, [req.params.slug]);
+    if (!r.rowCount) return next();
+    const vaga = r.rows[0];
+    const url = urlPublica(req, `/vaga/${vaga.slug}`);
+    const quem = vaga.empresa || vaga.clinica_nome;
+    const onde = vaga.cidade ? cidadeTitulo(vaga.cidade) : null;
+    const [municipio, uf] = String(vaga.cidade || '').split('/');
+    const salario = !vaga.salario_combinar && (vaga.salario_min || vaga.salario_max);
+    await servirSeo(res, 'vaga.html', {
+      titulo: `${vaga.titulo}${onde ? ' — ' + onde : ''} | Vagas PerFisio`,
+      descricao: resumir(vaga.resumo || vaga.descricao
+        || `${vaga.titulo} em ${quem}${onde ? ', ' + onde : ''}. Candidate-se pelo PerFisio.`),
+      url, tipo: 'article',
+      dados: { vaga },
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'JobPosting',
+        title: vaga.titulo,
+        description: resumir([vaga.resumo, vaga.descricao, vaga.requisitos].filter(Boolean).join(' '), 1200),
+        datePosted: new Date(vaga.criado_em).toISOString().slice(0, 10),
+        ...(vaga.expira_em ? { validThrough: vaga.expira_em } : {}),
+        employmentType: EMPREGO_SCHEMA[vaga.tipo] || 'OTHER',
+        hiringOrganization: { '@type': 'Organization', name: quem },
+        directApply: true,
+        ...(vaga.modalidade === 'online' ? { jobLocationType: 'TELECOMMUTE' } : {}),
+        ...(municipio ? {
+          jobLocation: {
+            '@type': 'Place',
+            address: {
+              '@type': 'PostalAddress', addressLocality: municipio,
+              ...(uf ? { addressRegion: uf } : {}), addressCountry: 'BR',
+            },
+          },
+        } : {}),
+        ...(salario ? {
+          baseSalary: {
+            '@type': 'MonetaryAmount', currency: 'BRL',
+            value: {
+              '@type': 'QuantitativeValue',
+              ...(vaga.salario_min && vaga.salario_max && vaga.salario_min !== vaga.salario_max
+                ? { minValue: vaga.salario_min, maxValue: vaga.salario_max }
+                : { value: vaga.salario_min || vaga.salario_max }),
+              unitText: PERIODO_SCHEMA[vaga.salario_periodo] || 'MONTH',
+            },
+          },
+        } : {}),
+      },
+    });
+  } catch (e) { next(e); }
+});
+
+// acompanhamento do candidato, aberto pelo código (sem senha)
+app.get('/candidatura/:codigo', async (req, res, next) => {
+  try {
+    res.setHeader('X-Robots-Tag', 'noindex'); // é a página de uma pessoa, não vai para o índice
+    await servirSeo(res, 'candidatura.html', {
+      titulo: 'Sua candidatura — PerFisio',
+      descricao: 'Acompanhe a situação da sua candidatura.',
+      url: urlPublica(req, `/candidatura/${req.params.codigo}`),
+      dados: { codigo: String(req.params.codigo || '').trim() },
     });
   } catch (e) { next(e); }
 });
@@ -4770,7 +5145,7 @@ app.get('/robots.txt', (req, res) => {
 
 app.get('/sitemap.xml', async (req, res) => {
   try {
-    const [cidades, fisios, clinicas, produtos, cursos] = await Promise.all([
+    const [cidades, fisios, clinicas, produtos, cursos, vagas] = await Promise.all([
       cidadesPublicas(),
       pool.query(`SELECT f.slug, f.cidade FROM fisios f JOIN clinicas c ON c.id = f.clinica_id
                   WHERE f.publico AND f.ativo AND c.ativa AND coalesce(f.slug,'') <> ''`),
@@ -4779,6 +5154,8 @@ app.get('/sitemap.xml', async (req, res) => {
       pool.query(`SELECT slug FROM produtos WHERE ativo AND coalesce(slug,'') <> '' ORDER BY categoria, nome`),
       pool.query(`SELECT c.slug FROM cursos c JOIN clinicas cl ON cl.id = c.clinica_id
                   WHERE ${CURSO_PUBLICO} AND coalesce(c.slug,'') <> ''`),
+      pool.query(`SELECT v.slug FROM vagas v JOIN clinicas cl ON cl.id = v.clinica_id
+                  WHERE ${VAGA_PUBLICA} AND coalesce(v.slug,'') <> ''`),
     ]);
     const urls = [
       { loc: '/', prio: '1.0' },
@@ -4787,6 +5164,8 @@ app.get('/sitemap.xml', async (req, res) => {
       { loc: '/fale-com-a-mari', prio: '0.8' },
       { loc: '/cursos', prio: '0.8' },
       ...cursos.rows.map(c => ({ loc: `/curso/${c.slug}`, prio: '0.7' })),
+      { loc: '/vagas', prio: '0.8' },
+      ...vagas.rows.map(v => ({ loc: `/vaga/${v.slug}`, prio: '0.7' })),
       { loc: '/loja', prio: '0.8' },
       ...produtos.rows.map(p => ({ loc: `/loja/${p.slug}`, prio: '0.6' })),
       { loc: '/blog', prio: '0.6' },

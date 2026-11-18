@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vagas — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="../assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="../assets/css/app.css">
+  <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}</style>
+  <style>
+    .vg-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px; }
+    .vg-item { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px 16px; box-shadow: var(--shadow); }
+    .vg-item .topo { display: flex; gap: 12px; align-items: flex-start; }
+    .vg-item .selo { width: 40px; height: 40px; border-radius: 11px; flex: none; display: grid; place-items: center;
+      background: var(--primary-soft); color: var(--primary-dark); }
+    .vg-item .selo .i { width: 19px; height: 19px; }
+    .vg-item h3 { font-size: 1rem; font-weight: 800; color: var(--ink); line-height: 1.35; }
+    .vg-item .onde { font-size: .78rem; color: var(--text-soft); margin-top: 3px; }
+    .vg-item .marcas { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+    .vg-item .numeros { display: flex; gap: 20px; margin: 14px 0; }
+    .vg-item .numeros div b { display: block; font-size: 1.15rem; font-weight: 800; color: var(--ink); }
+    .vg-item .numeros div span { font-size: .7rem; color: var(--text-soft); text-transform: uppercase; letter-spacing: .5px; }
+    .vg-item .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ponto-novo { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--blue); margin-left: 6px; vertical-align: middle; }
+
+    .cand-linha { border-bottom: 1px solid var(--line); padding: 15px 0; }
+    .cand-linha:last-child { border-bottom: none; }
+    .cand-cab { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .cand-cab .nome { font-weight: 700; color: var(--ink); font-size: .95rem; }
+    .cand-cab .sub { font-size: .76rem; color: var(--text-soft); }
+    .cand-cab select { margin-left: auto; font-size: .8rem; padding: 6px 8px; border: 1px solid var(--line);
+      border-radius: 8px; font-family: inherit; background: #fff; }
+    .cand-contato { display: flex; gap: 8px 16px; flex-wrap: wrap; margin-top: 8px; font-size: .82rem; }
+    .cand-contato a { color: var(--primary-dark); font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+    .cand-msg { font-size: .85rem; color: var(--text); line-height: 1.65; margin-top: 10px; background: var(--bg);
+      border-radius: 10px; padding: 11px 14px; white-space: pre-line; }
+    .cand-filtro { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+  </style>
+</head>
+<body data-page="vagas" data-title="Vagas" data-subtitle="Publique oportunidades e receba candidaturas de fisioterapeutas">
+
+  <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">Vagas abertas</span><div class="s-ico" style="background:var(--primary-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#maleta"></use></svg></div></div>
+      <div class="s-value" id="stAbertas">—</div><div class="s-delta"><span class="muted" id="stAbertasSub"></span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">Candidaturas</span><div class="s-ico" style="background:var(--blue-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#pessoas"></use></svg></div></div>
+      <div class="s-value" id="stCand">—</div><div class="s-delta"><span class="muted" id="stCandSub"></span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">Em entrevista</span><div class="s-ico" style="background:var(--amber-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#conversa"></use></svg></div></div>
+      <div class="s-value" id="stEntrev">—</div><div class="s-delta"><span class="muted">conversas em andamento</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-top"><span class="s-label">Última candidatura</span><div class="s-ico" style="background:var(--green-soft);"><svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#agenda"></use></svg></div></div>
+      <div class="s-value" id="stUltima" style="font-size:1.1rem;">—</div><div class="s-delta"><span class="muted" id="stUltimaSub"></span></div>
+    </div>
+  </div>
+
+  <div class="page-head">
+    <div><h2>Suas vagas</h2><div class="sub">As publicadas aparecem em <a href="/vagas" target="_blank" style="color:var(--primary-dark);font-weight:600;">perfisio.com.br/vagas</a></div></div>
+    <button class="btn btn-primary" onclick="abrirVaga()">+ Nova vaga</button>
+  </div>
+
+  <div class="vg-grade" id="grade"></div>
+
+  <!-- MODAL VAGA -->
+  <div class="modal-overlay" id="mVaga">
+    <div class="modal wide">
+      <div class="modal-head">
+        <h3 id="vgTituloModal">Nova vaga</h3>
+        <button class="close" onclick="App.closeModal('mVaga')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field full"><label>Título da vaga *</label>
+            <input type="text" id="vgTitulo" placeholder="Ex.: Fisioterapeuta para plantão em UTI adulto"></div>
+          <div class="field full"><label>Resumo (uma linha, aparece no quadro)</label>
+            <input type="text" id="vgResumo" placeholder="Ex.: 12x36 noturno, equipe de 8 fisios, hospital no centro"></div>
+          <div class="field"><label>Vínculo</label>
+            <select id="vgTipo">
+              <option value="clt">CLT</option><option value="pj">PJ</option>
+              <option value="freela">Freela</option><option value="plantao">Plantão</option>
+              <option value="temporario">Temporária / cobertura</option>
+              <option value="estagio">Estágio</option><option value="voluntario">Voluntária</option>
+            </select></div>
+          <div class="field"><label>Formato</label>
+            <select id="vgModalidade">
+              <option value="presencial">Presencial</option><option value="domiciliar">Domiciliar</option>
+              <option value="hibrido">Híbrido</option><option value="online">Teleatendimento</option>
+            </select></div>
+          <div class="field"><label>Especialidade</label>
+            <input type="text" id="vgEsp" placeholder="Ex.: Respiratória / UTI"></div>
+          <div class="field"><label>Jornada</label>
+            <input type="text" id="vgJornada" placeholder="Ex.: 12x36 noturno · 40h semanais"></div>
+          <div class="field"><label>Cidade</label><input type="text" id="vgCidade" placeholder="Ex.: Pelotas/RS"></div>
+          <div class="field"><label>Bairro</label><input type="text" id="vgBairro" placeholder="Ex.: Centro"></div>
+          <div class="field full"><label>Local de trabalho</label>
+            <input type="text" id="vgLocal" placeholder="Ex.: Hospital Santa Casa, ala B"></div>
+          <div class="field full"><label>Instituição que contrata</label>
+            <input type="text" id="vgEmpresa" placeholder="Só preencha se a vaga for de outra instituição (hospital, home care, empresa)">
+            <div class="ajuda" style="font-size:.76rem;color:var(--text-soft);margin-top:4px;">Em branco, a vaga aparece com o nome da sua clínica.</div></div>
+
+          <div class="field"><label>Remuneração de</label><input type="number" id="vgSalMin" min="0" step="50" placeholder="Ex.: 2800"></div>
+          <div class="field"><label>até</label><input type="number" id="vgSalMax" min="0" step="50" placeholder="deixe vazio se for valor fixo"></div>
+          <div class="field"><label>Por</label>
+            <select id="vgPeriodo">
+              <option value="mes">mês</option><option value="plantao">plantão</option>
+              <option value="hora">hora</option><option value="dia">dia</option>
+              <option value="atendimento">atendimento</option>
+            </select></div>
+          <div class="field"><label>Quantidade de vagas</label><input type="number" id="vgPosicoes" min="1" step="1" value="1"></div>
+          <div class="check-row full"><input type="checkbox" id="vgCombinar">
+            <label for="vgCombinar" style="margin:0;font-weight:500;">Valor a combinar (não mostrar números)</label></div>
+
+          <div class="field full"><label>Sobre a vaga</label>
+            <textarea id="vgDescricao" style="min-height:110px;" placeholder="O dia a dia, o time, o perfil de paciente, como é a rotina..."></textarea></div>
+          <div class="field full"><label>O que a vaga pede</label>
+            <textarea id="vgRequisitos" placeholder="Uma exigência por linha: CREFITO ativo, experiência em UTI, disponibilidade noturna..."></textarea></div>
+          <div class="field full"><label>O que a vaga oferece</label>
+            <textarea id="vgBeneficios" placeholder="Uma por linha: vale-transporte, plantão extra, educação continuada..."></textarea></div>
+
+          <div class="field"><label>E-mail de contato</label><input type="email" id="vgEmail" placeholder="opcional"></div>
+          <div class="field"><label>WhatsApp de contato</label><input type="tel" id="vgWhats" placeholder="opcional"></div>
+          <div class="field"><label>Candidatura em outro site</label>
+            <input type="url" id="vgLink" placeholder="opcional — se preencher, o botão leva para lá"></div>
+          <div class="field"><label>Último dia no quadro</label><input type="date" id="vgExpira"></div>
+
+          <div class="check-row"><input type="checkbox" id="vgPublicado">
+            <label for="vgPublicado" style="margin:0;font-weight:500;">Publicada no quadro de vagas</label></div>
+          <div class="check-row"><input type="checkbox" id="vgAberta" checked>
+            <label for="vgAberta" style="margin:0;font-weight:500;">Recebendo candidaturas</label></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mVaga')">Cancelar</button>
+        <button class="btn btn-primary" id="btnVaga" onclick="salvarVaga()">Salvar vaga</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL CANDIDATOS -->
+  <div class="modal-overlay" id="mCand">
+    <div class="modal wide">
+      <div class="modal-head">
+        <h3 id="candTitulo">Candidaturas</h3>
+        <button class="close" onclick="App.closeModal('mCand')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="cand-filtro" id="candFiltro"></div>
+        <div id="candLista"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" onclick="App.closeModal('mCand')">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/app.js"></script>
+  <script src="../assets/js/api.js"></script>
+  <script src="../assets/js/vagas-comum.js?v=1"></script>
+  <script src="../assets/js/sidebar.js"></script>
+  <script>
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const ICO = n => `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#${n}"></use></svg>`;
+
+    let VAGAS = [], vagaEdit = null, candidaturas = null, filtroStatus = '';
+
+    function desenhar() {
+      const grade = document.getElementById('grade');
+      grade.innerHTML = VAGAS.length ? VAGAS.map(v => {
+        const s = Vagas.salario(v);
+        return `
+        <article class="vg-item">
+          <div class="topo">
+            <span class="selo">${ICO(Vagas.icone(v))}</span>
+            <div style="min-width:0;">
+              <h3>${esc(v.titulo)}</h3>
+              <div class="onde">${esc(v.empresa || '')}${v.empresa ? ' · ' : ''}${esc(Vagas.onde(v))}</div>
+            </div>
+          </div>
+          <div class="marcas">
+            <span class="badge ${v.publicado ? 'green' : 'gray'}">${v.publicado ? 'publicada' : 'rascunho'}</span>
+            <span class="badge ${v.aberta ? 'primary' : 'amber'}">${v.aberta ? 'recebendo' : 'encerrada'}</span>
+            <span class="badge gray">${esc(Vagas.TIPOS[v.tipo] || v.tipo)}</span>
+            ${v.expira_em && v.expira_em < new Date().toISOString().slice(0, 10)
+              ? '<span class="badge amber">prazo vencido</span>' : ''}
+          </div>
+          <div class="numeros">
+            <div><b>${v.candidatos}${v.novas ? '<span class="ponto-novo" title="novas"></span>' : ''}</b><span>candidatos</span></div>
+            <div><b>${v.entrevistas}</b><span>entrevistas</span></div>
+            <div><b>${esc(s.valor)}</b><span>${esc(s.nota || 'remuneração')}</span></div>
+          </div>
+          <div class="acoes">
+            <button class="btn btn-soft btn-sm" onclick="abrirCandidatos('${v.id}')">${ICO('pessoas')} Candidaturas${v.novas ? ` (${v.novas} nova${v.novas === 1 ? '' : 's'})` : ''}</button>
+            <button class="btn btn-ghost btn-sm" onclick="abrirVaga('${v.id}')">Editar</button>
+            ${v.publicado ? `<a class="btn btn-ghost btn-sm" href="/vaga/${esc(v.slug)}" target="_blank" title="Ver a página">${ICO('externo')}</a>` : ''}
+            <button class="btn btn-ghost btn-sm" onclick="excluirVaga('${v.id}')" title="Excluir">${ICO('lixeira')}</button>
+          </div>
+        </article>`;
+      }).join('')
+        : `<div class="empty" style="grid-column:1/-1;">
+             Nenhuma vaga ainda. Publique a primeira em <b>+ Nova vaga</b> — ela entra no quadro público
+             do PerFisio e os fisioterapeutas se candidatam por lá.</div>`;
+
+      const abertas = VAGAS.filter(v => v.publicado && v.aberta).length;
+      const candidatos = VAGAS.reduce((s, v) => s + v.candidatos, 0);
+      const novas = VAGAS.reduce((s, v) => s + v.novas, 0);
+      const ultima = VAGAS.map(v => v.ultima_candidatura).filter(Boolean).sort().pop();
+      document.getElementById('stAbertas').textContent = abertas;
+      document.getElementById('stAbertasSub').textContent = `${VAGAS.length} no total`;
+      document.getElementById('stCand').textContent = candidatos;
+      document.getElementById('stCandSub').textContent = novas ? `${novas} ainda não lida(s)` : 'todas lidas';
+      document.getElementById('stEntrev').textContent = VAGAS.reduce((s, v) => s + v.entrevistas, 0);
+      document.getElementById('stUltima').textContent = ultima ? PF.fmtData(ultima.slice(0, 10)) : '—';
+      document.getElementById('stUltimaSub').textContent = ultima ? Vagas.desdeQuando(ultima) : 'nenhuma ainda';
+    }
+
+    /* ---------- criar / editar ---------- */
+    const CAMPOS = {
+      vgTitulo: 'titulo', vgResumo: 'resumo', vgEsp: 'especialidade', vgJornada: 'jornada',
+      vgCidade: 'cidade', vgBairro: 'bairro', vgLocal: 'local', vgEmpresa: 'empresa',
+      vgDescricao: 'descricao', vgRequisitos: 'requisitos', vgBeneficios: 'beneficios',
+      vgEmail: 'contato_email', vgWhats: 'contato_whatsapp', vgLink: 'link_externo', vgExpira: 'expira_em',
+    };
+
+    function abrirVaga(id) {
+      vagaEdit = id ? VAGAS.find(v => v.id === id) : null;
+      const v = vagaEdit || {};
+      document.getElementById('vgTituloModal').textContent = vagaEdit ? 'Editar vaga' : 'Nova vaga';
+      Object.entries(CAMPOS).forEach(([campo, chave]) => {
+        document.getElementById(campo).value = v[chave] == null ? '' : v[chave];
+      });
+      document.getElementById('vgTipo').value = v.tipo || 'clt';
+      document.getElementById('vgModalidade').value = v.modalidade || 'presencial';
+      document.getElementById('vgPeriodo').value = v.salario_periodo || 'mes';
+      document.getElementById('vgSalMin').value = v.salario_min || '';
+      document.getElementById('vgSalMax').value = v.salario_max || '';
+      document.getElementById('vgPosicoes').value = v.posicoes || 1;
+      document.getElementById('vgCombinar').checked = !!v.salario_combinar;
+      document.getElementById('vgPublicado').checked = vagaEdit ? !!v.publicado : true;
+      document.getElementById('vgAberta').checked = vagaEdit ? !!v.aberta : true;
+      App.openModal('mVaga');
+    }
+
+    async function salvarVaga() {
+      const btn = document.getElementById('btnVaga');
+      const val = id => document.getElementById(id).value.trim();
+      const corpo = {
+        tipo: document.getElementById('vgTipo').value,
+        modalidade: document.getElementById('vgModalidade').value,
+        salario_periodo: document.getElementById('vgPeriodo').value,
+        salario_min: val('vgSalMin') || null, salario_max: val('vgSalMax') || null,
+        salario_combinar: document.getElementById('vgCombinar').checked,
+        posicoes: parseInt(val('vgPosicoes'), 10) || 1,
+        publicado: document.getElementById('vgPublicado').checked,
+        aberta: document.getElementById('vgAberta').checked,
+      };
+      Object.entries(CAMPOS).forEach(([campo, chave]) => { corpo[chave] = val(campo) || null; });
+      if (!corpo.titulo || corpo.titulo.length < 4) { App.toast('Dê um título à vaga', 'error'); return; }
+      btn.disabled = true; btn.textContent = 'Salvando...';
+      try {
+        if (vagaEdit) await PF.api('/api/vagas/' + vagaEdit.id, { method: 'PUT', body: corpo });
+        else await PF.api('/api/vagas', { method: 'POST', body: corpo });
+        App.closeModal('mVaga');
+        App.toast('Vaga salva');
+        await carregar();
+      } catch (e) { App.toast(e.message, 'error'); }
+      btn.disabled = false; btn.textContent = 'Salvar vaga';
+    }
+
+    async function excluirVaga(id) {
+      const v = VAGAS.find(x => x.id === id);
+      if (!confirm(`Excluir "${v.titulo}"?`)) return;
+      try { await PF.api('/api/vagas/' + id, { method: 'DELETE' }); App.toast('Vaga excluída'); await carregar(); }
+      catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* ---------- candidaturas ---------- */
+    async function abrirCandidatos(id) {
+      App.openModal('mCand');
+      filtroStatus = '';
+      document.getElementById('candLista').innerHTML = '<div class="empty">Carregando...</div>';
+      document.getElementById('candFiltro').innerHTML = '';
+      try { candidaturas = await PF.api(`/api/vagas/${id}/candidaturas`); }
+      catch (e) { document.getElementById('candLista').innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
+      document.getElementById('candTitulo').textContent = candidaturas.vaga.titulo;
+      desenharCandidatos();
+      carregar();   // abrir a lista marcou tudo como visto: o ponto azul some do card
+    }
+
+    function desenharCandidatos() {
+      const todas = candidaturas.candidaturas;
+      const porStatus = s => todas.filter(c => c.status === s).length;
+      document.getElementById('candFiltro').innerHTML = todas.length
+        ? [['', `Todas (${todas.length})`]].concat(Object.keys(Vagas.STATUS)
+            .filter(s => porStatus(s))
+            .map(s => [s, `${Vagas.STATUS[s][1]} (${porStatus(s)})`]))
+          .map(([valor, texto]) =>
+            `<span class="chip${filtroStatus === valor ? ' active' : ''}" onclick="filtrar('${valor}')">${esc(texto)}</span>`).join('')
+        : '';
+
+      const lista = filtroStatus ? todas.filter(c => c.status === filtroStatus) : todas;
+      document.getElementById('candLista').innerHTML = lista.length ? lista.map(c => {
+        const [cor] = Vagas.STATUS[c.status] || ['gray'];
+        const zap = String(c.telefone || '').replace(/\D/g, '');
+        return `
+        <div class="cand-linha">
+          <div class="cand-cab">
+            <span>
+              <span class="nome">${esc(c.nome)}</span>
+              <span class="sub">${esc(c.codigo)}${c.crefito ? ' · ' + esc(c.crefito) : ''}${c.cidade ? ' · ' + esc(c.cidade) : ''} · ${esc(Vagas.desdeQuando(c.criado_em))}</span>
+            </span>
+            <span class="badge ${cor}">${esc(Vagas.STATUS[c.status] ? Vagas.STATUS[c.status][1] : c.status)}</span>
+            <select onchange="mudarStatus('${c.id}', this.value)">
+              ${Object.entries(Vagas.STATUS).map(([s, [, rotulo]]) =>
+                `<option value="${s}"${s === c.status ? ' selected' : ''}>${rotulo}</option>`).join('')}
+            </select>
+          </div>
+          <div class="cand-contato">
+            <a href="mailto:${esc(c.email)}">${ICO('email')} ${esc(c.email)}</a>
+            ${zap ? `<a href="https://wa.me/55${esc(zap)}" target="_blank">${ICO('whatsapp')} ${esc(c.telefone)}</a>` : ''}
+            ${c.fisio_slug ? `<a href="/fisioterapeuta/${esc(c.fisio_slug)}" target="_blank">${ICO('pessoa')} perfil no PerFisio</a>`
+              : c.perfil_url ? `<a href="${esc(c.perfil_url)}" target="_blank" rel="noopener">${ICO('link')} currículo</a>` : ''}
+          </div>
+          ${c.mensagem ? `<div class="cand-msg">${esc(c.mensagem)}</div>` : ''}
+        </div>`;
+      }).join('')
+        : `<div class="empty">${todas.length ? 'Ninguém nesta situação.' : 'Ninguém se candidatou ainda. Divulgue o link da vaga.'}</div>`;
+    }
+
+    function filtrar(status) { filtroStatus = status; desenharCandidatos(); }
+
+    async function mudarStatus(id, status) {
+      try {
+        await PF.api('/api/candidaturas/' + id, { method: 'PUT', body: { status } });
+        const c = candidaturas.candidaturas.find(x => x.id === id);
+        if (c) c.status = status;
+        App.toast('Candidatura atualizada');
+        desenharCandidatos();
+        carregar();
+      } catch (e) { App.toast(e.message, 'error'); }
+    }
+
+    /* ---------- boot ---------- */
+    async function carregar() {
+      const d = await PF.api('/api/vagas');
+      VAGAS = d.vagas;
+      desenhar();
+    }
+
+    (async function boot() {
+      try { await carregar(); } catch (e) { App.toast(e.message, 'error'); return; }
+      // link direto vindo do aviso do sino: /app/vagas.html?vaga=slug
+      const slug = new URLSearchParams(location.search).get('vaga');
+      const achada = slug && VAGAS.find(v => v.slug === slug);
+      if (achada) abrirCandidatos(achada.id);
+    })();
+  </script>
+</body>
+</html>

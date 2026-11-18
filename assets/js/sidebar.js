@@ -39,6 +39,7 @@
     { id: 'equipe',        href: 'equipe.html',        ico: 'estetoscopio', text: 'Equipe' },
     { id: 'relatorios',    href: 'relatorios.html',    ico: 'subindo',      text: 'Relatórios' },
     { id: 'cursos',        href: 'cursos.html',        ico: 'ideia',        text: 'Cursos' },
+    { id: 'vagas',         href: 'vagas.html',         ico: 'maleta',       text: 'Vagas' },
     { id: 'loja',          href: 'loja.html',          ico: 'loja',         text: 'Loja · 5% off' },
     { id: 'assinatura',    href: 'assinatura.html',    ico: 'recibo',       text: 'Assinatura' },
     { id: 'configuracoes', href: 'configuracoes.html', ico: 'engrenagem',   text: 'Configurações' },

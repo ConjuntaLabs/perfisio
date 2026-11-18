@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sua candidatura — PerFisio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/assets/img/simbolo-perfisio.svg">
+  <link rel="stylesheet" href="/assets/css/app.css">
+  <style>.i{width:1.15em;height:1.15em;fill:currentColor;vertical-align:-.22em;flex:none}</style>
+  <style>
+    body { background: var(--bg); padding: 26px 16px 48px; }
+    .wrap { max-width: 640px; margin: 0 auto; }
+    .topo-marca { text-align: center; margin-bottom: 20px; }
+    .topo-marca img { height: 26px; width: auto; }
+    @media (max-width: 760px) { .topo-marca img { height: 21px; } }
+
+    .cartao { background: #fff; border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
+    .capa { padding: 24px 26px; background: linear-gradient(135deg, var(--primary), #0F2A2E); color: #fff; }
+    .capa .etiqueta { font-size: .72rem; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; opacity: .85; }
+    .capa h1 { font-size: 1.3rem; font-weight: 900; letter-spacing: -.5px; margin-top: 8px; line-height: 1.3; }
+    .capa .sub { font-size: .88rem; opacity: .9; margin-top: 8px; display: flex; gap: 8px 18px; flex-wrap: wrap; }
+    .capa .sub span { display: inline-flex; align-items: center; gap: 7px; }
+
+    .corpo { padding: 22px 26px 26px; }
+    .linha-status { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+    .codigo { background: var(--bg); border: 1px dashed var(--line); border-radius: 9px; padding: 7px 13px;
+      font-weight: 800; color: var(--ink); letter-spacing: 1px; font-size: .9rem; }
+
+    .passos { list-style: none; padding: 0; margin: 22px 0 0; }
+    .passo { display: flex; gap: 14px; align-items: flex-start; padding: 0 0 20px; position: relative; }
+    .passo:not(:last-child)::before { content: ''; position: absolute; left: 13px; top: 28px; bottom: 0; width: 2px; background: var(--line); }
+    .passo.feito:not(:last-child)::before { background: var(--primary); }
+    .bolinha { width: 28px; height: 28px; border-radius: 50%; flex: none; display: grid; place-items: center;
+      background: var(--bg); border: 2px solid var(--line); color: var(--text-soft); z-index: 1; }
+    .passo.feito .bolinha { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .passo.agora .bolinha { border-color: var(--primary); color: var(--primary-dark); background: #fff; }
+    .passo .i { width: 14px; height: 14px; }
+    .passo b { display: block; font-size: .92rem; font-weight: 700; color: var(--ink); }
+    .passo span { font-size: .83rem; color: var(--text-soft); line-height: 1.6; }
+    .passo.recusada .bolinha { background: var(--red-soft); border-color: #F0C9C9; color: var(--red); }
+
+    .dados { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); font-size: .85rem; color: var(--text-soft); line-height: 1.8; }
+    .dados b { color: var(--ink); }
+    .erro-box { text-align: center; padding: 40px 20px; color: var(--text-soft); }
+    .rodape { text-align: center; margin-top: 18px; font-size: .78rem; color: var(--text-soft); }
+    .rodape a { color: var(--primary-dark); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topo-marca"><a href="/"><img src="/assets/img/logo-perfisio.svg" alt="PerFisio"></a></div>
+    <div id="conteudo"><div class="cartao"><div class="erro-box">Carregando sua candidatura...</div></div></div>
+    <div class="rodape">Candidatura feita pelo <a href="/vagas">quadro de vagas do PerFisio</a></div>
+  </div>
+
+  <script src="/assets/js/app.js"></script>
+  <script src="/assets/js/vagas-comum.js?v=1"></script>
+  <script>
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const ICO = n => `<svg class="i" aria-hidden="true"><use href="/assets/img/icones.svg#${n}"></use></svg>`;
+    const CODIGO = (window.__PF && window.__PF.codigo) || location.pathname.split('/').filter(Boolean).pop();
+    const caixa = document.getElementById('conteudo');
+
+    /* a caminhada da candidatura; "recusada" sai da trilha e vira o último passo */
+    const TRILHA = [
+      ['nova', 'Candidatura enviada', 'Seus dados chegaram a quem publicou a vaga.'],
+      ['triagem', 'Em triagem', 'Estão lendo as candidaturas e comparando com o que a vaga pede.'],
+      ['entrevista', 'Chamada para conversa', 'Fique de olho no WhatsApp e no e-mail que você cadastrou.'],
+      ['aprovada', 'Aprovada', 'Parabéns! O combinado daqui para frente é direto com quem contratou.'],
+    ];
+
+    function desenhar(c) {
+      const atual = TRILHA.findIndex(p => p[0] === c.status);
+      const recusada = c.status === 'recusada';
+      const [cor, rotulo] = Vagas.STATUS[c.status] || ['gray', c.status];
+      const onde = c.modalidade === 'online' ? 'Teleatendimento'
+        : [c.local, c.vaga_cidade].filter(Boolean).join(' · ') || 'Presencial';
+
+      caixa.innerHTML = `
+        <div class="cartao">
+          <div class="capa">
+            <div class="etiqueta">Sua candidatura</div>
+            <h1>${esc(c.titulo)}</h1>
+            <div class="sub">
+              <span>${ICO('hospital')} ${esc(c.empresa || c.clinica_nome)}</span>
+              <span>${ICO(c.modalidade === 'online' ? 'celular' : 'local')} ${esc(onde)}</span>
+              <span>${ICO('maleta')} ${esc(Vagas.TIPOS[c.tipo] || c.tipo)}</span>
+            </div>
+          </div>
+          <div class="corpo">
+            <div class="linha-status">
+              <span class="badge ${cor}">${esc(rotulo)}</span>
+              <span class="codigo">${esc(c.codigo)}</span>
+              <span style="font-size:.84rem;color:var(--text-soft);margin-left:auto;">
+                enviada ${esc(Vagas.desdeQuando(c.criado_em))}</span>
+            </div>
+
+            <ul class="passos">
+              ${TRILHA.map((p, i) => {
+                const feito = !recusada && atual >= i;
+                const agora = !recusada && atual === i;
+                return `<li class="passo ${feito ? 'feito' : ''} ${agora ? 'agora' : ''}">
+                  <span class="bolinha">${feito ? ICO('check') : i + 1}</span>
+                  <span><b>${esc(p[1])}</b><span>${esc(p[2])}</span></span>
+                </li>`;
+              }).join('')}
+              ${recusada ? `<li class="passo recusada">
+                <span class="bolinha">${ICO('fechar')}</span>
+                <span><b>Não seguiu desta vez</b><span>A vaga foi para outra pessoa. Seu perfil continua no PerFisio —
+                  <a href="/vagas" style="color:var(--primary-dark);font-weight:700;">veja as outras vagas abertas</a>.</span></span>
+              </li>` : ''}
+            </ul>
+
+            <div class="dados">
+              <b>${esc(c.nome)}</b> · ${esc(c.email)}${c.telefone ? ' · ' + esc(c.telefone) : ''}<br>
+              ${c.crefito ? esc(c.crefito) + ' · ' : ''}${c.cidade ? esc(c.cidade) : ''}
+              ${c.publicado && c.aberta
+                ? `<br><a href="/vaga/${esc(c.slug)}" style="color:var(--primary-dark);font-weight:600;">Ver a vaga</a>`
+                : '<br>Esta vaga não está mais no quadro.'}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    (async function carregar() {
+      try {
+        const r = await fetch('/api/public/candidatura/' + encodeURIComponent(CODIGO));
+        if (!r.ok) throw new Error('não achei');
+        const c = await r.json();
+        document.title = `${c.titulo} — sua candidatura | PerFisio`;
+        desenhar(c);
+      } catch (e) {
+        caixa.innerHTML = `<div class="cartao"><div class="erro-box">
+          <b style="display:block;color:var(--ink);font-size:1rem;margin-bottom:6px;">Candidatura não encontrada</b>
+          Confira o código que apareceu quando você se candidatou, ou
+          <a href="/vagas" style="color:var(--primary-dark);font-weight:700;">veja as vagas abertas</a>.
+        </div></div>`;
+      }
+    })();
+  </script>
+</body>
+</html>
